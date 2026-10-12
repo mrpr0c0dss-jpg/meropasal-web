@@ -58,6 +58,39 @@ import {
 } from 'firebase/database';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 
+/**
+ * Recursively cleans any object/array to remove keys with `undefined` values,
+ * which cause Firebase Realtime Database and Firestore to crash with:
+ * "value argument contains undefined in property..."
+ */
+export const cleanForFirebase = <T,>(data: T): T => {
+  if (data === null || data === undefined) {
+    return null as unknown as T;
+  }
+  if (Array.isArray(data)) {
+    return data.map((item) => cleanForFirebase(item)) as unknown as T;
+  }
+  if (typeof data === 'object' && !(data instanceof Date)) {
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        cleaned[key] = cleanForFirebase(value);
+      }
+    }
+    return cleaned as T;
+  }
+  return data;
+};
+
+const safeSetRtdb = (rtdbRef: any, value: any) => {
+  try {
+    const cleaned = cleanForFirebase(value);
+    return setRtdb(rtdbRef, cleaned).catch(() => {});
+  } catch {
+    return Promise.resolve();
+  }
+};
+
 interface AppContextType {
   // Localization & Theme & Privacy
   language: Language;
@@ -795,9 +828,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Cloud sync to both root and Flutter subcollection paths (shops/{shopId}/...)
   const syncToCloud = useCallback((collectionName: string, docId: string, data: any, merge = true) => {
     try {
-      setDoc(doc(db, collectionName, docId), data, { merge }).catch(() => {});
+      const cleaned = cleanForFirebase(data);
+      setDoc(doc(db, collectionName, docId), cleaned, { merge }).catch(() => {});
       if (shop.id) {
-        setDoc(doc(db, 'shops', shop.id, collectionName, docId), data, { merge }).catch(() => {});
+        setDoc(doc(db, 'shops', shop.id, collectionName, docId), cleaned, { merge }).catch(() => {});
       }
     } catch {}
   }, [shop.id]);
@@ -827,14 +861,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         const targetId = merged.id || prev.id || 'main_shop';
         if (targetId && targetId !== 'main_shop') {
-          setDoc(doc(db, 'shops', targetId), merged, { merge: true }).catch((e) => {
+          setDoc(doc(db, 'shops', targetId), cleanForFirebase(merged), { merge: true }).catch((e) => {
             console.warn('Firestore write warning:', e?.message || e);
           });
-          setRtdb(ref(rtdb, `shops/${targetId}`), merged).catch(() => {});
+          safeSetRtdb(ref(rtdb, `shops/${targetId}`), merged);
         }
         // Always sync to main_shop document as well for global storefront viewers
-        setDoc(doc(db, 'shops', 'main_shop'), merged, { merge: true }).catch(() => {});
-        setRtdb(ref(rtdb, 'shops/main_shop'), merged).catch(() => {});
+        setDoc(doc(db, 'shops', 'main_shop'), cleanForFirebase(merged), { merge: true }).catch(() => {});
+        safeSetRtdb(ref(rtdb, 'shops/main_shop'), merged);
       } catch (err) {
         console.warn('Firebase updateShop error:', err);
       }
@@ -855,8 +889,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setProducts((prev) => [newProduct, ...prev]);
       // Real Cloud Firestore (root & Flutter shops/{shopId}/products) & RTDB sync
       syncToCloud('products', newProduct.id, newProduct);
-      setRtdb(ref(rtdb, `products/${newProduct.id}`), newProduct).catch(() => {});
-      setRtdb(ref(rtdb, `shops/main_shop/products/${newProduct.id}`), newProduct).catch(() => {});
+      safeSetRtdb(ref(rtdb, `products/${newProduct.id}`), newProduct);
+      safeSetRtdb(ref(rtdb, `shops/main_shop/products/${newProduct.id}`), newProduct);
       return newProduct;
     },
     [shop.id, syncToCloud]
@@ -871,7 +905,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
     // Real Cloud Firestore & RTDB sync
     syncToCloud('products', id, { ...updates, updatedAt });
-    setRtdb(ref(rtdb, `products/${id}`), updates).catch(() => {});
+    safeSetRtdb(ref(rtdb, `products/${id}`), updates);
   }, [syncToCloud]);
 
   const deleteProduct = useCallback((id: string) => {
@@ -1128,28 +1162,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         invoiceNumber,
         items: [...cart],
         subtotal,
-        vatRate: saleData.vatRate,
-        vatAmount,
-        discount: saleData.discount,
+        vatRate: saleData.vatRate || 0,
+        vatAmount: vatAmount || 0,
+        discount: saleData.discount || 0,
         total: grandTotal,
         paymentMethod: saleData.paymentMethod,
         paidAmount: saleData.paidAmount,
-        dueAmount: saleData.dueAmount,
-        customerName: saleData.customerName || (saleData.customerId ? customers.find((c) => c.id === saleData.customerId)?.name : 'Walk-in Customer'),
-        customerPhone: saleData.customerPhone,
-        customerAddress: saleData.customerAddress,
-        customerId: saleData.customerId,
+        dueAmount: saleData.dueAmount || 0,
+        customerName: saleData.customerName || (saleData.customerId ? customers.find((c) => c.id === saleData.customerId)?.name : 'Walk-in Customer') || 'Walk-in Customer',
+        customerPhone: saleData.customerPhone || '',
+        customerAddress: saleData.customerAddress || '',
+        customerId: saleData.customerId || '',
         status: 'completed',
-        billedByName: user?.displayName || shop.ownerName,
-        billedByUid: user?.uid,
+        billedByName: user?.displayName || shop.ownerName || 'Cashier',
+        billedByUid: user?.uid || '',
         createdAt: new Date().toISOString(),
       };
 
       // 1. Add to sales list & Cloud Firestore
       setSales((prev) => [newSale, ...prev]);
       syncToCloud('sales', newSale.id, newSale);
-      setRtdb(ref(rtdb, `sales/${newSale.id}`), newSale).catch(() => {});
-      setRtdb(ref(rtdb, `shops/main_shop/sales/${newSale.id}`), newSale).catch(() => {});
+      safeSetRtdb(ref(rtdb, `sales/${newSale.id}`), newSale);
+      safeSetRtdb(ref(rtdb, `shops/main_shop/sales/${newSale.id}`), newSale);
 
       // 2. Reduce product inventory & sync to Firestore
       setProducts((prev) =>

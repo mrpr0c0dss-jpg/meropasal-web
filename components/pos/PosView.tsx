@@ -150,10 +150,10 @@ export const PosView: React.FC = () => {
       dueAmount: calculatedDueAmount,
       vatRate,
       discount: discountAmount,
-      customerId: selectedCustomerId || undefined,
+      customerId: selectedCustomerId || '',
       customerName: selectedCustomer ? selectedCustomer.name : 'Walk-in Customer',
-      customerPhone: selectedCustomer?.phone,
-      customerAddress: selectedCustomer?.address,
+      customerPhone: selectedCustomer?.phone || '',
+      customerAddress: selectedCustomer?.address || '',
     });
 
     // Trigger celebration confetti
