@@ -589,9 +589,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch {}
       }
     };
+    const handleCustomShopEvent = (e: any) => {
+      if (e?.detail) {
+        setShop((curr) => ({ ...curr, ...e.detail }));
+      }
+    };
     window.addEventListener('storage', handleStorageEvent);
+    window.addEventListener('mp_shop_updated', handleCustomShopEvent);
     return () => {
       window.removeEventListener('storage', handleStorageEvent);
+      window.removeEventListener('mp_shop_updated', handleCustomShopEvent);
       unsubs.forEach((unsub) => {
         try {
           unsub();
@@ -604,10 +611,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (!isMounted) return;
     try {
-      if (hasShop && shop.name) {
+      if (shop && shop.name) {
         localStorage.setItem(STORAGE_KEYS.SHOP, JSON.stringify(shop));
-      } else {
-        localStorage.removeItem(STORAGE_KEYS.SHOP);
       }
       localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
       localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(customers));
@@ -717,15 +722,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateShop = useCallback((updates: Partial<ShopModel>) => {
     setShop((prev) => {
       const merged = { ...prev, ...updates };
+
+      // Synchronously write to localStorage and notify other components/tabs
+      try {
+        if (typeof window !== 'undefined' && merged.name) {
+          localStorage.setItem(STORAGE_KEYS.SHOP, JSON.stringify(merged));
+          window.dispatchEvent(new CustomEvent('mp_shop_updated', { detail: merged }));
+        }
+      } catch {}
+
       // Push live update to Firebase Firestore & Realtime Database
       try {
-        const targetId = merged.id || shop.id;
-        if (targetId) {
+        const targetId = merged.id || prev.id || 'main_shop';
+        if (targetId && targetId !== 'main_shop') {
           setDoc(doc(db, 'shops', targetId), merged, { merge: true }).catch((e) => {
             console.warn('Firestore write warning:', e?.message || e);
           });
           setRtdb(ref(rtdb, `shops/${targetId}`), merged).catch(() => {});
         }
+        // Always sync to main_shop document as well for global storefront viewers
+        setDoc(doc(db, 'shops', 'main_shop'), merged, { merge: true }).catch(() => {});
+        setRtdb(ref(rtdb, 'shops/main_shop'), merged).catch(() => {});
       } catch (err) {
         console.warn('Firebase updateShop error:', err);
       }

@@ -55,7 +55,37 @@ export const DedicatedStoreWebsite: React.FC<DedicatedStoreWebsiteProps> = ({
   onBackToApp,
   standalone = false,
 }) => {
-  const { shop, products, paymentQR, formatCurrency, language, setLanguage } = useApp();
+  const { shop: contextShop, products, paymentQR, formatCurrency, language, setLanguage } = useApp();
+  const [localShopOverride, setLocalShopOverride] = useState<Partial<typeof contextShop>>({});
+
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem('mp_shop');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.name) setLocalShopOverride(parsed);
+      }
+    } catch {}
+
+    const handleUpdate = (e: any) => {
+      if (e?.detail) setLocalShopOverride((curr) => ({ ...curr, ...e.detail }));
+    };
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'mp_shop' && e.newValue) {
+        try {
+          setLocalShopOverride((curr) => ({ ...curr, ...JSON.parse(e.newValue!) }));
+        } catch {}
+      }
+    };
+    window.addEventListener('mp_shop_updated', handleUpdate);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('mp_shop_updated', handleUpdate);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
+  const shop = { ...contextShop, ...localShopOverride };
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');

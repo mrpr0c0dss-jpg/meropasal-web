@@ -479,7 +479,9 @@ export const WAStoreDesignStudio: React.FC<WAStoreDesignStudioProps> = ({ onBack
   ]);
 
   const handleSaveChanges = () => {
-    updateShop({
+    const updatedPayload = {
+      id: shop.id || 'shop_demo_001',
+      name: shop.name || 'Mero Pasal Kirana & General Store',
       themeColor: activeColorHex,
       logoUrl: logoImageUrl,
       bannerUrl: bannerImageUrl,
@@ -513,7 +515,19 @@ export const WAStoreDesignStudio: React.FC<WAStoreDesignStudioProps> = ({ onBack
       hideSortingMenu,
       hideCategoryFilters,
       removeCreateStoreFooter,
-    });
+    };
+
+    updateShop(updatedPayload);
+
+    try {
+      if (typeof window !== 'undefined') {
+        const currentSaved = localStorage.getItem('mp_shop');
+        const base = currentSaved ? JSON.parse(currentSaved) : shop;
+        localStorage.setItem('mp_shop', JSON.stringify({ ...base, ...updatedPayload }));
+        window.dispatchEvent(new CustomEvent('mp_shop_updated', { detail: { ...base, ...updatedPayload } }));
+      }
+    } catch {}
+
     setIsSaveToastVisible(true);
     setTimeout(() => {
       setIsSaveToastVisible(false);
@@ -522,21 +536,25 @@ export const WAStoreDesignStudio: React.FC<WAStoreDesignStudioProps> = ({ onBack
 
   return (
     <div className="min-h-screen bg-[#F4F6F8] dark:bg-[#0B0F19] text-slate-800 dark:text-slate-100 flex flex-col font-sans selection:bg-emerald-500 selection:text-white antialiased">
-      {/* ── TOP YELLOW LIVE DEMO BANNER ───────────────────────── */}
+      {/* ── TOP LIVE STORE BAR ───────────────────────── */}
       <div className="bg-[#1C1917] text-white py-2 px-4 text-xs flex items-center justify-between border-b border-white/10 z-50">
         <div className="max-w-7xl mx-auto w-full flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-[12px] font-medium text-amber-200">
-            <span className="text-amber-400">✨</span>
-            <span>You&apos;re exploring a live demo — edit anything, nothing is saved.</span>
+          <div className="flex items-center gap-2 text-[12px] font-medium text-emerald-300">
+            <span className="text-emerald-400">⚡</span>
+            <span>Live Design Studio — Customize your storefront colors, banner, announcement &amp; layout.</span>
           </div>
 
           <div className="flex items-center gap-3">
-            <button
-              onClick={onBackToApp || handleSaveChanges}
-              className="px-3.5 py-1 rounded-md bg-white text-slate-900 hover:bg-slate-100 font-bold text-xs transition cursor-pointer shadow-sm"
+            <a
+              href="/store"
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => handleSaveChanges()}
+              className="px-3.5 py-1 rounded-md bg-white text-slate-900 hover:bg-slate-100 font-bold text-xs transition cursor-pointer shadow-sm inline-flex items-center gap-1.5"
             >
-              Create your store
-            </button>
+              <ExternalLink className="w-3.5 h-3.5 text-slate-700" />
+              <span>View live store</span>
+            </a>
           </div>
         </div>
       </div>
@@ -614,7 +632,8 @@ export const WAStoreDesignStudio: React.FC<WAStoreDesignStudioProps> = ({ onBack
                     href="/store"
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-white transition"
+                    onClick={() => handleSaveChanges()}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:hover:text-white transition cursor-pointer"
                   >
                     <ExternalLink className="w-3.5 h-3.5 text-slate-500" />
                     <span>View live store</span>
