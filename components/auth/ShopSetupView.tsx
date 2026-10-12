@@ -59,7 +59,7 @@ export const SHOP_CATEGORIES = [
 ];
 
 export const ShopSetupView: React.FC<ShopSetupViewProps> = ({ onNavigateAuth }) => {
-  const { user, shop, updateShop, setHasShop, paymentQR, updatePaymentQR, printerSettings, updatePrinterSettings, logout } = useApp();
+  const { user, shop, updateShop, setHasShop, paymentQR, updatePaymentQR, printerSettings, updatePrinterSettings, logout, resetToDemoData } = useApp();
 
   // Basic Details
   const [shopName, setShopName] = useState(shop.name && shop.name !== 'My Store' ? shop.name : '');
@@ -311,6 +311,19 @@ export const ShopSetupView: React.FC<ShopSetupViewProps> = ({ onNavigateAuth }) 
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                resetToDemoData();
+                setHasShop(true);
+                onNavigateAuth('app');
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/80 text-xs font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-100 transition cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>Load Demo Store</span>
+            </button>
+
             <button
               type="button"
               onClick={() => setIsJoinModalOpen(true)}

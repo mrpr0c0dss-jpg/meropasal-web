@@ -25,7 +25,7 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onNavigateAuth }) =>
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // 1. Google Sign-Up with Fast Non-Blocking Resolution
+  // 1. Google Sign-Up with proper domain error feedback
   const handleGoogleSignUp = async () => {
     setLoading(true);
     setErrorMessage(null);
@@ -33,23 +33,10 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onNavigateAuth }) =>
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
 
-      const authPromise = signInWithPopup(auth, provider);
-      const result = await Promise.race([
-        authPromise,
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
-      ]);
+      const result = await signInWithPopup(auth, provider);
+      const fbUser = result?.user;
 
-      let fbUser: any = result?.user;
-
-      if (!fbUser) {
-        fbUser = {
-          uid: 'google_' + Date.now().toString(36),
-          email: 'google.owner@meropasal.com',
-          displayName: 'Google Shop Owner',
-          phoneNumber: '9841234567',
-          photoURL: 'https://lh3.googleusercontent.com/a/default-user=s96-c',
-        };
-      }
+      if (!fbUser) throw new Error('No user returned from Google authentication');
 
       setUser({
         uid: fbUser.uid,
@@ -82,18 +69,19 @@ export const RegisterView: React.FC<RegisterViewProps> = ({ onNavigateAuth }) =>
       setHasShop(false);
       onNavigateAuth('shop-setup');
     } catch (err: any) {
-      console.warn('Google Sign-up notice handled:', err);
-      // Smooth fallback so user never gets stuck
-      setUser({
-        uid: 'google_' + Date.now().toString(36),
-        email: 'google.owner@gmail.com',
-        displayName: 'Shop Owner',
-        phoneNumber: '9800000000',
-        shopId: shop.id,
-        role: 'owner',
-        createdAt: new Date().toISOString(),
-      });
-      onNavigateAuth('shop-setup');
+      console.error('Google Sign-up notice:', err);
+      if (err?.code === 'auth/unauthorized-domain') {
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : 'your Vercel domain';
+        setErrorMessage(
+          `Domain "${hostname}" is not authorized for Google Sign-In in Firebase. In Firebase Console -> Authentication -> Settings -> Authorized domains, add "${hostname}". Or register using email below.`
+        );
+      } else if (err?.code === 'auth/popup-closed-by-user') {
+        setErrorMessage('Sign-up popup was closed. Please try again.');
+      } else if (err?.code === 'auth/popup-blocked') {
+        setErrorMessage('Sign-up popup was blocked by your browser. Please allow popups.');
+      } else {
+        setErrorMessage(err?.message || 'Failed to sign up with Google. Please use email registration.');
+      }
     } finally {
       setLoading(false);
     }

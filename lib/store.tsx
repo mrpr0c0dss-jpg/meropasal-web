@@ -26,6 +26,7 @@ import {
   initialStaff,
   initialPaymentQR,
   initialPrinterSettings,
+  initialUdharoTransactions,
 } from './mockData';
 import { Language, translations } from './translations';
 import { audioFeedback } from './audioFeedback';
@@ -161,13 +162,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [authInitialized, setAuthInitialized] = useState<boolean>(false);
   const [hasShop, setHasShop] = useState<boolean>(false);
   const [shop, setShop] = useState<ShopModel>(initialShop);
-  const [products, setProducts] = useState<ProductModel[]>([]);
-  const [customers, setCustomers] = useState<CustomerModel[]>([]);
-  const [udharoTransactions, setUdharoTransactions] = useState<UdharoTransactionModel[]>([]);
-  const [sales, setSales] = useState<SaleModel[]>([]);
-  const [suppliers, setSuppliers] = useState<SupplierModel[]>([]);
-  const [expenses, setExpenses] = useState<ExpenseModel[]>([]);
-  const [staff, setStaff] = useState<StaffMemberModel[]>([]);
+  const [products, setProducts] = useState<ProductModel[]>(initialProducts);
+  const [customers, setCustomers] = useState<CustomerModel[]>(initialCustomers);
+  const [udharoTransactions, setUdharoTransactions] = useState<UdharoTransactionModel[]>(initialUdharoTransactions);
+  const [sales, setSales] = useState<SaleModel[]>(initialSales);
+  const [suppliers, setSuppliers] = useState<SupplierModel[]>(initialSuppliers);
+  const [expenses, setExpenses] = useState<ExpenseModel[]>(initialExpenses);
+  const [staff, setStaff] = useState<StaffMemberModel[]>(initialStaff);
   const [paymentQR, setPaymentQR] = useState<PaymentQRModel>(initialPaymentQR);
   const [printerSettings, setPrinterSettings] = useState<PrinterSettingsModel>(initialPrinterSettings);
 
@@ -187,22 +188,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME) as 'light' | 'dark';
       if (savedTheme) setTheme(savedTheme);
 
-      // Auto-purge any stale demo products from localStorage if found
       const savedProductsStr = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
       if (savedProductsStr) {
         try {
           const parsed = JSON.parse(savedProductsStr);
-          const hasDemo = Array.isArray(parsed) && parsed.some((p: any) => p.id === 'prod_1' || p.name?.includes('Wai Wai'));
-          if (hasDemo) {
-            localStorage.removeItem(STORAGE_KEYS.PRODUCTS);
-            localStorage.removeItem(STORAGE_KEYS.CUSTOMERS);
-            localStorage.removeItem(STORAGE_KEYS.UDHARO_TXNS);
-            localStorage.removeItem(STORAGE_KEYS.SALES);
-            localStorage.removeItem(STORAGE_KEYS.SUPPLIERS);
-            localStorage.removeItem(STORAGE_KEYS.EXPENSES);
-            localStorage.removeItem(STORAGE_KEYS.STAFF);
-            localStorage.removeItem(STORAGE_KEYS.SHOP);
-          } else if (Array.isArray(parsed)) {
+          if (Array.isArray(parsed) && parsed.length > 0) {
             setProducts(parsed);
           }
         } catch {}
@@ -212,18 +202,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (savedShop) {
         try {
           const parsedShop = JSON.parse(savedShop);
-          if (
-            parsedShop &&
-            parsedShop.name &&
-            parsedShop.name !== 'My Store' &&
-            parsedShop.name !== 'Mero Pasal Kirana & General Store' &&
-            parsedShop.id &&
-            parsedShop.id !== 'shop_001'
-          ) {
+          if (parsedShop && parsedShop.name && parsedShop.id) {
             setShop(parsedShop);
             setHasShop(true);
-          } else {
-            localStorage.removeItem(STORAGE_KEYS.SHOP);
           }
         } catch {}
       }
@@ -232,7 +213,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (savedCustomers) {
         try {
           const parsed = JSON.parse(savedCustomers);
-          if (Array.isArray(parsed) && !parsed.some((c: any) => c.id === 'cust_1')) {
+          if (Array.isArray(parsed) && parsed.length > 0) {
             setCustomers(parsed);
           }
         } catch {}
@@ -242,7 +223,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (savedUdharoTx) {
         try {
           const parsed = JSON.parse(savedUdharoTx);
-          if (Array.isArray(parsed) && !parsed.some((t: any) => t.id === 'tx_1')) {
+          if (Array.isArray(parsed) && parsed.length > 0) {
             setUdharoTransactions(parsed);
           }
         } catch {}
@@ -252,7 +233,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (savedSales) {
         try {
           const parsed = JSON.parse(savedSales);
-          if (Array.isArray(parsed) && !parsed.some((s: any) => s.id === 'sale_101')) {
+          if (Array.isArray(parsed) && parsed.length > 0) {
             setSales(parsed);
           }
         } catch {}
@@ -262,7 +243,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (savedSuppliers) {
         try {
           const parsed = JSON.parse(savedSuppliers);
-          if (Array.isArray(parsed) && !parsed.some((s: any) => s.id === 'supp_1')) {
+          if (Array.isArray(parsed) && parsed.length > 0) {
             setSuppliers(parsed);
           }
         } catch {}
@@ -272,7 +253,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (savedExpenses) {
         try {
           const parsed = JSON.parse(savedExpenses);
-          if (Array.isArray(parsed) && !parsed.some((e: any) => e.id === 'exp_1')) {
+          if (Array.isArray(parsed) && parsed.length > 0) {
             setExpenses(parsed);
           }
         } catch {}
@@ -282,7 +263,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (savedStaff) {
         try {
           const parsed = JSON.parse(savedStaff);
-          if (Array.isArray(parsed) && !parsed.some((m: any) => m.id === 'staff_1')) {
+          if (Array.isArray(parsed) && parsed.length > 0) {
             setStaff(parsed);
           }
         } catch {}
@@ -326,13 +307,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               const list: ProductModel[] = [];
               snap.forEach((d) => {
                 const data = d.data() as ProductModel;
-                if (data.id !== 'prod_1' && !data.name?.includes('Wai Wai')) {
-                  list.push(data);
-                }
+                list.push(data);
               });
               setProducts(list);
-            } else {
-              setProducts([]);
             }
           },
           (err) => console.warn('Firestore products sync notice:', err.message)
@@ -349,13 +326,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               const list: CustomerModel[] = [];
               snap.forEach((d) => {
                 const data = d.data() as CustomerModel;
-                if (data.id !== 'cust_1') {
-                  list.push(data);
-                }
+                list.push(data);
               });
               setCustomers(list);
-            } else {
-              setCustomers([]);
             }
           },
           (err) => console.warn('Firestore customers sync notice:', err.message)
@@ -372,16 +345,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               const list: SaleModel[] = [];
               snap.forEach((d) => {
                 const data = d.data() as SaleModel;
-                if (data.id !== 'sale_101') {
-                  list.push(data);
-                }
+                list.push(data);
               });
               list.sort(
                 (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
               );
               setSales(list);
-            } else {
-              setSales([]);
             }
           },
           (err) => console.warn('Firestore sales sync notice:', err.message)
@@ -398,16 +367,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               const list: UdharoTransactionModel[] = [];
               snap.forEach((d) => {
                 const data = d.data() as UdharoTransactionModel;
-                if (data.id !== 'tx_1' && data.id !== 'tx_2') {
-                  list.push(data);
-                }
+                list.push(data);
               });
               list.sort(
                 (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
               );
               setUdharoTransactions(list);
-            } else {
-              setUdharoTransactions([]);
             }
           },
           (err) => console.warn('Firestore udharo sync notice:', err.message)
@@ -424,16 +389,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               const list: ExpenseModel[] = [];
               snap.forEach((d) => {
                 const data = d.data() as ExpenseModel;
-                if (data.id !== 'exp_1' && data.id !== 'exp_2') {
-                  list.push(data);
-                }
+                list.push(data);
               });
               list.sort(
                 (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
               );
               setExpenses(list);
-            } else {
-              setExpenses([]);
             }
           },
           (err) => console.warn('Firestore expenses sync notice:', err.message)
@@ -450,13 +411,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               const list: SupplierModel[] = [];
               snap.forEach((d) => {
                 const data = d.data() as SupplierModel;
-                if (data.id !== 'supp_1' && data.id !== 'supp_2') {
-                  list.push(data);
-                }
+                list.push(data);
               });
               setSuppliers(list);
-            } else {
-              setSuppliers([]);
             }
           },
           (err) => console.warn('Firestore suppliers sync notice:', err.message)
@@ -1246,8 +1203,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setPaymentQR(initialPaymentQR);
     setPrinterSettings(initialPrinterSettings);
     setCart([]);
+    setHasShop(true);
+    const demoUser: UserModel = {
+      uid: 'guest_001',
+      email: 'demo.owner@meropasal.com',
+      displayName: 'Ramesh Adhikari',
+      phoneNumber: '9841234567',
+      shopId: initialShop.id,
+      role: 'owner',
+      createdAt: new Date().toISOString(),
+    };
+    setUser(demoUser);
     try {
-      localStorage.clear();
+      localStorage.setItem(STORAGE_KEYS.SHOP, JSON.stringify(initialShop));
+      localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(initialProducts));
+      localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(initialCustomers));
+      localStorage.setItem(STORAGE_KEYS.SALES, JSON.stringify(initialSales));
+      localStorage.setItem(STORAGE_KEYS.SUPPLIERS, JSON.stringify(initialSuppliers));
+      localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(initialExpenses));
+      localStorage.setItem(STORAGE_KEYS.STAFF, JSON.stringify(initialStaff));
     } catch {
       // Ignore
     }

@@ -18,7 +18,7 @@ interface LoginViewProps {
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({ onNavigateAuth }) => {
-  const { setUser, shop, t } = useApp();
+  const { setUser, setHasShop, shop, resetToDemoData, t } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -43,7 +43,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateAuth }) => {
     return false;
   };
 
-  // 1. Official Google Authentication with Fast Non-Blocking Resolution
+  // 1. Official Google Authentication with proper error feedback
   const handleGoogleLogin = async () => {
     setLoading(true);
     setErrorMessage(null);
@@ -51,35 +51,22 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateAuth }) => {
       const provider = new GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
 
-      // Fast race with 2s timeout so popup delays never leave the user hanging
-      const authPromise = signInWithPopup(auth, provider);
-      const result = await Promise.race([
-        authPromise,
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
-      ]);
+      const result = await signInWithPopup(auth, provider);
+      const fbUser = result?.user;
 
-      let fbUser: any = result?.user;
+      if (!fbUser) throw new Error('No user returned from Google authentication');
 
-      if (!fbUser) {
-        // Fallback user if popup is closed, blocked, delayed or awaiting domain authorization
-        fbUser = {
-          uid: 'google_' + Date.now().toString(36),
-          email: 'google.merchant@meropasal.com',
-          displayName: 'Google Merchant',
-          phoneNumber: '9841234567',
-          photoURL: 'https://lh3.googleusercontent.com/a/default-user=s96-c',
-        };
-      }
-
-      setUser({
+      const activeUser = {
         uid: fbUser.uid,
         email: fbUser.email || 'user@gmail.com',
         displayName: fbUser.displayName || 'Shop Owner',
-        phoneNumber: fbUser.phoneNumber || '9841234567',
-        shopId: shop.id,
-        role: 'owner',
+        phoneNumber: fbUser.phoneNumber || '',
+        shopId: shop.id || '',
+        role: 'owner' as const,
         createdAt: new Date().toISOString(),
-      });
+      };
+
+      setUser(activeUser);
 
       // Background non-blocking sync to Firestore
       setDoc(
@@ -95,16 +82,28 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateAuth }) => {
       ).catch((err) => console.warn('Firestore user profile sync warning:', err));
 
       // Check if user is returning or new on our server
-      const hasShop = await checkUserHasShop(fbUser.uid);
-      if (hasShop) {
+      const hasShopDoc = await checkUserHasShop(fbUser.uid);
+      if (hasShopDoc) {
+        setHasShop(true);
         onNavigateAuth('app');
       } else {
-        // New user on our server: must setup store!
+        setHasShop(false);
         onNavigateAuth('shop-setup');
       }
     } catch (err: any) {
-      console.warn('Google sign-in fallback handled:', err);
-      onNavigateAuth('shop-setup');
+      console.error('Google sign-in notice:', err);
+      if (err?.code === 'auth/unauthorized-domain') {
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : 'your Vercel domain';
+        setErrorMessage(
+          `Domain "${hostname}" is not authorized for Google Sign-In in Firebase. In Firebase Console -> Authentication -> Settings -> Authorized domains, add "${hostname}". Or use the Instant Demo Access button below!`
+        );
+      } else if (err?.code === 'auth/popup-closed-by-user') {
+        setErrorMessage('Sign-in popup was closed before completing. Please try again.');
+      } else if (err?.code === 'auth/popup-blocked') {
+        setErrorMessage('Sign-in popup was blocked by your browser. Please allow popups for this site.');
+      } else {
+        setErrorMessage(err?.message || 'Failed to sign in with Google. Please try again or use Instant Demo.');
+      }
     } finally {
       setLoading(false);
     }
@@ -196,15 +195,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onNavigateAuth }) => {
 
   // 3. Instant One-Click Demo Access (0ms delay)
   const handleGuestDemo = () => {
-    setUser({
-      uid: 'guest_001',
-      email: 'demo.owner@meropasal.com',
-      displayName: 'Ramesh Adhikari',
-      phoneNumber: '9841234567',
-      shopId: shop.id,
-      role: 'owner',
-      createdAt: new Date().toISOString(),
-    });
+    resetToDemoData();
+    setHasShop(true);
     onNavigateAuth('app');
   };
 
