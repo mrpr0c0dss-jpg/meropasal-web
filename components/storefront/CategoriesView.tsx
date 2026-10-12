@@ -11,6 +11,7 @@ import {
   ArrowRight,
   Sparkles,
   ShoppingBag,
+  Trash2,
 } from 'lucide-react';
 
 interface CategoriesViewProps {
@@ -18,11 +19,10 @@ interface CategoriesViewProps {
 }
 
 export const CategoriesView: React.FC<CategoriesViewProps> = ({ onNavigateToProducts }) => {
-  const { products, formatCurrency } = useApp();
+  const { products, formatCurrency, categories, addCategory, deleteCategory } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
-  const [customCategories, setCustomCategories] = useState<string[]>([]);
 
   // Compute product counts and revenue per category
   const categoryStats = React.useMemo(() => {
@@ -38,14 +38,19 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ onNavigateToProd
     return stats;
   }, [products]);
 
-  const allCategoryNames = Array.from(
-    new Set([...Object.keys(categoryStats), ...customCategories])
-  ).filter((cat) => cat.toLowerCase().includes(searchQuery.toLowerCase()));
+  const allCategoryNames = React.useMemo(() => {
+    const set = new Set<string>();
+    categories.forEach((c) => set.add(c));
+    products.forEach((p) => {
+      if (p.category) set.add(p.category);
+    });
+    return Array.from(set).filter((cat) => cat.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [categories, products, searchQuery]);
 
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCategoryName.trim()) return;
-    setCustomCategories((prev) => [...prev, newCategoryName.trim()]);
+    addCategory(newCategoryName.trim());
     setNewCategoryName('');
     setIsAddModalOpen(false);
   };
@@ -55,9 +60,16 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ onNavigateToProd
       Snacks: { bg: 'bg-amber-50 dark:bg-amber-950/40', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800' },
       Groceries: { bg: 'bg-emerald-50 dark:bg-emerald-950/40', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-200 dark:border-emerald-800' },
       Dairy: { bg: 'bg-blue-50 dark:bg-blue-950/40', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800' },
+      'Dairy & Bakery': { bg: 'bg-blue-50 dark:bg-blue-950/40', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800' },
       Beverages: { bg: 'bg-purple-50 dark:bg-purple-950/40', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-800' },
+      Spices: { bg: 'bg-orange-50 dark:bg-orange-950/40', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-800' },
       Bakery: { bg: 'bg-orange-50 dark:bg-orange-950/40', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-800' },
-      Cosmetics: { bg: 'bg-rose-50 dark:bg-rose-950/40', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-800' },
+      Dresses: { bg: 'bg-rose-50 dark:bg-rose-950/40', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-800' },
+      Outerwear: { bg: 'bg-indigo-50 dark:bg-indigo-950/40', text: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-200 dark:border-indigo-800' },
+      'Tops & Knit': { bg: 'bg-teal-50 dark:bg-teal-950/40', text: 'text-teal-700 dark:text-teal-300', border: 'border-teal-200 dark:border-teal-800' },
+      Accessories: { bg: 'bg-violet-50 dark:bg-violet-950/40', text: 'text-violet-700 dark:text-violet-300', border: 'border-violet-200 dark:border-violet-800' },
+      Cosmetics: { bg: 'bg-pink-50 dark:bg-pink-950/40', text: 'text-pink-700 dark:text-pink-300', border: 'border-pink-200 dark:border-pink-800' },
+      'Personal Care': { bg: 'bg-cyan-50 dark:bg-cyan-950/40', text: 'text-cyan-700 dark:text-cyan-300', border: 'border-cyan-200 dark:border-cyan-800' },
     };
     return colors[name] || { bg: 'bg-slate-50 dark:bg-slate-800/60', text: 'text-slate-700 dark:text-slate-300', border: 'border-slate-200 dark:border-slate-700' };
   };
@@ -115,9 +127,24 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ onNavigateToProd
                   <div className={`p-2.5 rounded-xl ${theme.bg} ${theme.text} ${theme.border} border`}>
                     <Tag className="w-4 h-4" />
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                    {stats.count} {stats.count === 1 ? 'item' : 'items'}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      {stats.count} {stats.count === 1 ? 'item' : 'items'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Are you sure you want to remove the category "${category}"? Products in it will remain.`)) {
+                          deleteCategory(category);
+                        }
+                      }}
+                      title="Delete category"
+                      className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
                 <h3 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-blue-600 transition truncate">
                   {category}

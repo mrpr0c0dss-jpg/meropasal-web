@@ -96,6 +96,16 @@ class AudioFeedbackService {
       // Ignore
     }
   }
+
+  // Play success chime
+  playSuccessChime() {
+    this.playCashRegisterChime();
+  }
+
+  // Play coin drop
+  playCoinDrop() {
+    this.playScanBeep();
+  }
 }
 
 export const audioFeedback = new AudioFeedbackService();

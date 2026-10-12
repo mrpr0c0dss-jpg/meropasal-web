@@ -9,6 +9,11 @@ import {
   SaleModel,
   ShopModel,
   StaffMemberModel,
+  AttendanceRecord,
+  SalaryAdvanceRecord,
+  PayrollRecord,
+  StaffSalaryStructure,
+  StaffPermissions,
   PaymentQRModel,
   PrinterSettingsModel,
   UserModel,
@@ -24,6 +29,9 @@ import {
   initialSuppliers,
   initialExpenses,
   initialStaff,
+  initialAttendance,
+  initialSalaryAdvances,
+  initialPayrolls,
   initialPaymentQR,
   initialPrinterSettings,
   initialUdharoTransactions,
@@ -77,6 +85,12 @@ interface AppContextType {
   updateProduct: (id: string, updates: Partial<ProductModel>) => void;
   deleteProduct: (id: string) => void;
   restockProduct: (id: string, quantityToAdd: number) => void;
+  duplicateProduct: (id: string) => ProductModel | null;
+  reorderProducts: (fromIndex: number, toIndex: number) => void;
+  bulkAddProducts: (products: Omit<ProductModel, 'id' | 'shopId' | 'createdAt' | 'updatedAt'>[]) => void;
+  categories: string[];
+  addCategory: (name: string) => void;
+  deleteCategory: (name: string) => void;
 
   // Customers & Udharo Ledger
   customers: CustomerModel[];
@@ -117,10 +131,28 @@ interface AppContextType {
   addExpense: (expense: Omit<ExpenseModel, 'id' | 'shopId' | 'createdAt'>) => void;
   deleteExpense: (id: string) => void;
 
-  // Staff
+  // Staff & HRM
   staff: StaffMemberModel[];
   addStaff: (staffMember: Omit<StaffMemberModel, 'id' | 'shopId' | 'joinedAt'>) => void;
+  updateStaff: (id: string, updates: Partial<StaffMemberModel>) => void;
+  deleteStaff: (id: string) => void;
   toggleStaffStatus: (id: string) => void;
+  updateStaffSalary: (staffId: string, salaryStructure: Partial<StaffSalaryStructure>) => void;
+  updateStaffPermissions: (staffId: string, permissions: Partial<StaffPermissions>) => void;
+
+  // Attendance & Time Tracking
+  attendance: AttendanceRecord[];
+  recordClockIn: (staffId: string) => void;
+  recordClockOut: (staffId: string) => void;
+  addAttendanceRecord: (record: Omit<AttendanceRecord, 'id'>) => void;
+  updateAttendanceRecord: (id: string, updates: Partial<AttendanceRecord>) => void;
+
+  // Salary Advances & Payroll
+  salaryAdvances: SalaryAdvanceRecord[];
+  addSalaryAdvance: (advance: Omit<SalaryAdvanceRecord, 'id' | 'isDeducted'>) => void;
+  payrolls: PayrollRecord[];
+  generateMonthlyPayroll: (month: string, monthName: string) => void;
+  markPayrollPaid: (payrollId: string, paymentMethod: 'Bank Transfer' | 'Cash' | 'eSewa' | 'Fonepay', transactionRef?: string) => void;
 
   // Settings
   paymentQR: PaymentQRModel;
@@ -147,8 +179,12 @@ const STORAGE_KEYS = {
   SUPPLIERS: 'mp_suppliers',
   EXPENSES: 'mp_expenses',
   STAFF: 'mp_staff',
+  ATTENDANCE: 'mp_staff_attendance',
+  SALARY_ADVANCES: 'mp_staff_advances',
+  PAYROLLS: 'mp_staff_payrolls',
   PAYMENT_QR: 'mp_qr',
   PRINTER: 'mp_printer',
+  CATEGORIES: 'mp_custom_categories',
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -163,12 +199,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [hasShop, setHasShop] = useState<boolean>(false);
   const [shop, setShop] = useState<ShopModel>(initialShop);
   const [products, setProducts] = useState<ProductModel[]>(initialProducts);
+  const [categories, setCategories] = useState<string[]>([
+    'Groceries',
+    'Snacks',
+    'Beverages',
+    'Dairy & Bakery',
+    'Spices',
+    'Personal Care',
+    'Dresses',
+    'Outerwear',
+    'Tops & Knit',
+    'Accessories',
+  ]);
   const [customers, setCustomers] = useState<CustomerModel[]>(initialCustomers);
   const [udharoTransactions, setUdharoTransactions] = useState<UdharoTransactionModel[]>(initialUdharoTransactions);
   const [sales, setSales] = useState<SaleModel[]>(initialSales);
   const [suppliers, setSuppliers] = useState<SupplierModel[]>(initialSuppliers);
   const [expenses, setExpenses] = useState<ExpenseModel[]>(initialExpenses);
   const [staff, setStaff] = useState<StaffMemberModel[]>(initialStaff);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>(initialAttendance);
+  const [salaryAdvances, setSalaryAdvances] = useState<SalaryAdvanceRecord[]>(initialSalaryAdvances);
+  const [payrolls, setPayrolls] = useState<PayrollRecord[]>(initialPayrolls);
   const [paymentQR, setPaymentQR] = useState<PaymentQRModel>(initialPaymentQR);
   const [printerSettings, setPrinterSettings] = useState<PrinterSettingsModel>(initialPrinterSettings);
 
@@ -269,11 +320,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         } catch {}
       }
 
+      const savedAtt = localStorage.getItem(STORAGE_KEYS.ATTENDANCE);
+      if (savedAtt) {
+        try {
+          const parsed = JSON.parse(savedAtt);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setAttendance(parsed);
+          }
+        } catch {}
+      }
+
+      const savedAdv = localStorage.getItem(STORAGE_KEYS.SALARY_ADVANCES);
+      if (savedAdv) {
+        try {
+          const parsed = JSON.parse(savedAdv);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setSalaryAdvances(parsed);
+          }
+        } catch {}
+      }
+
+      const savedPayrolls = localStorage.getItem(STORAGE_KEYS.PAYROLLS);
+      if (savedPayrolls) {
+        try {
+          const parsed = JSON.parse(savedPayrolls);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setPayrolls(parsed);
+          }
+        } catch {}
+      }
+
       const savedQr = localStorage.getItem(STORAGE_KEYS.PAYMENT_QR);
       if (savedQr) setPaymentQR(JSON.parse(savedQr));
 
       const savedPrinter = localStorage.getItem(STORAGE_KEYS.PRINTER);
       if (savedPrinter) setPrinterSettings(JSON.parse(savedPrinter));
+
+      const savedCats = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
+      if (savedCats) {
+        try {
+          const parsed = JSON.parse(savedCats);
+          if (Array.isArray(parsed) && parsed.length > 0) setCategories(parsed);
+        } catch {}
+      }
     } catch {
       // Ignore
     }
@@ -621,12 +710,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem(STORAGE_KEYS.SUPPLIERS, JSON.stringify(suppliers));
       localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
       localStorage.setItem(STORAGE_KEYS.STAFF, JSON.stringify(staff));
+      localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(attendance));
+      localStorage.setItem(STORAGE_KEYS.SALARY_ADVANCES, JSON.stringify(salaryAdvances));
+      localStorage.setItem(STORAGE_KEYS.PAYROLLS, JSON.stringify(payrolls));
       localStorage.setItem(STORAGE_KEYS.PAYMENT_QR, JSON.stringify(paymentQR));
       localStorage.setItem(STORAGE_KEYS.PRINTER, JSON.stringify(printerSettings));
     } catch {
       // Ignore
     }
-  }, [isMounted, shop, products, customers, udharoTransactions, sales, suppliers, expenses, staff, paymentQR, printerSettings]);
+  }, [isMounted, shop, products, customers, udharoTransactions, sales, suppliers, expenses, staff, attendance, salaryAdvances, payrolls, paymentQR, printerSettings]);
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
@@ -807,6 +899,78 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
     audioFeedback.playScanBeep();
   }, [syncToCloud]);
+
+  const duplicateProduct = useCallback(
+    (id: string) => {
+      const original = products.find((p) => p.id === id);
+      if (!original) return null;
+      const duplicated: ProductModel = {
+        ...original,
+        id: `prod_${Date.now()}`,
+        name: `${original.name} (Copy)`,
+        barcode: original.barcode ? `${original.barcode.slice(0, 9)}${Math.floor(1000 + Math.random() * 9000)}` : undefined,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setProducts((prev) => [duplicated, ...prev]);
+      syncToCloud('products', duplicated.id, duplicated);
+      audioFeedback.playSuccessChime();
+      return duplicated;
+    },
+    [products, syncToCloud]
+  );
+
+  const reorderProducts = useCallback((fromIndex: number, toIndex: number) => {
+    setProducts((prev) => {
+      if (fromIndex < 0 || fromIndex >= prev.length || toIndex < 0 || toIndex >= prev.length) return prev;
+      const updated = [...prev];
+      const [moved] = updated.splice(fromIndex, 1);
+      updated.splice(toIndex, 0, moved);
+      return updated;
+    });
+  }, []);
+
+  const bulkAddProducts = useCallback(
+    (productsList: Omit<ProductModel, 'id' | 'shopId' | 'createdAt' | 'updatedAt'>[]) => {
+      const timestamp = new Date().toISOString();
+      const newItems: ProductModel[] = productsList.map((p, idx) => ({
+        ...p,
+        id: `prod_${Date.now()}_${idx}`,
+        shopId: shop.id,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      }));
+      setProducts((prev) => [...newItems, ...prev]);
+      newItems.forEach((item) => syncToCloud('products', item.id, item));
+      audioFeedback.playSuccessChime();
+    },
+    [shop.id, syncToCloud]
+  );
+
+  // Categories CRUD
+  const addCategory = useCallback((name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setCategories((prev) => {
+      if (prev.some((c) => c.toLowerCase() === trimmed.toLowerCase())) return prev;
+      const next = [...prev, trimmed];
+      try {
+        localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+    audioFeedback.playSuccessChime();
+  }, []);
+
+  const deleteCategory = useCallback((name: string) => {
+    setCategories((prev) => {
+      const next = prev.filter((c) => c.toLowerCase() !== name.toLowerCase());
+      try {
+        localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
 
   // Customers & Udharo
   const addCustomer = useCallback(
@@ -1164,33 +1328,322 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     deleteFromCloud('expenses', id);
   }, [deleteFromCloud]);
 
-  // Staff
+  // Staff & HRM
   const addStaff = useCallback(
     (staffData: Omit<StaffMemberModel, 'id' | 'shopId' | 'joinedAt'>) => {
       const newStaff: StaffMemberModel = {
         ...staffData,
         id: `staff_${Date.now()}`,
         shopId: shop.id,
+        employeeCode: staffData.employeeCode || `EMP-${1000 + staff.length + 1}`,
+        department: staffData.department || 'POS Billing',
+        employmentType: staffData.employmentType || 'Full-Time',
+        shift: staffData.shift || 'Day (10AM-6PM)',
         joinedAt: new Date().toISOString(),
+        salaryStructure: staffData.salaryStructure || {
+          salaryType: 'monthly',
+          baseSalary: 22000,
+          foodAllowance: 3000,
+          transportAllowance: 1500,
+          otherAllowance: 500,
+          overtimeHourlyRate: 150,
+          pfDeduction: 1000,
+          taxTdsPercent: 1,
+        },
+        permissions: staffData.permissions || {
+          canGiveDiscount: true,
+          maxDiscountPercent: 10,
+          canCancelBill: false,
+          canViewCostPrice: false,
+          canManageExpenses: false,
+          canAccessUdharo: true,
+          canEditProductPrice: false,
+        },
       };
       setStaff((prev) => [newStaff, ...prev]);
       syncToCloud('staff', newStaff.id, newStaff);
     },
-    [shop.id, syncToCloud]
+    [shop.id, staff.length, syncToCloud]
   );
 
-  const toggleStaffStatus = useCallback((id: string) => {
-    setStaff((prev) =>
-      prev.map((m) => {
-        if (m.id === id) {
-          const updated = { ...m, isActive: !m.isActive };
-          syncToCloud('staff', id, { isActive: updated.isActive });
+  const updateStaff = useCallback(
+    (id: string, updates: Partial<StaffMemberModel>) => {
+      setStaff((prev) =>
+        prev.map((s) => {
+          if (s.id === id) {
+            const updated = { ...s, ...updates };
+            syncToCloud('staff', id, updated);
+            return updated;
+          }
+          return s;
+        })
+      );
+    },
+    [syncToCloud]
+  );
+
+  const deleteStaff = useCallback(
+    (id: string) => {
+      setStaff((prev) => prev.filter((s) => s.id !== id));
+      deleteFromCloud('staff', id);
+    },
+    [deleteFromCloud]
+  );
+
+  const toggleStaffStatus = useCallback(
+    (id: string) => {
+      setStaff((prev) =>
+        prev.map((m) => {
+          if (m.id === id) {
+            const updated = { ...m, isActive: !m.isActive };
+            syncToCloud('staff', id, { isActive: updated.isActive });
+            return updated;
+          }
+          return m;
+        })
+      );
+    },
+    [syncToCloud]
+  );
+
+  const updateStaffSalary = useCallback(
+    (staffId: string, salaryUpdates: Partial<StaffSalaryStructure>) => {
+      setStaff((prev) =>
+        prev.map((s) => {
+          if (s.id === staffId) {
+            const updatedSalary = { ...s.salaryStructure, ...salaryUpdates };
+            const updated = { ...s, salaryStructure: updatedSalary };
+            syncToCloud('staff', staffId, { salaryStructure: updatedSalary });
+            return updated;
+          }
+          return s;
+        })
+      );
+    },
+    [syncToCloud]
+  );
+
+  const updateStaffPermissions = useCallback(
+    (staffId: string, permissionUpdates: Partial<StaffPermissions>) => {
+      setStaff((prev) =>
+        prev.map((s) => {
+          if (s.id === staffId) {
+            const updatedPermissions = { ...s.permissions, ...permissionUpdates };
+            const updated = { ...s, permissions: updatedPermissions };
+            syncToCloud('staff', staffId, { permissions: updatedPermissions });
+            return updated;
+          }
+          return s;
+        })
+      );
+    },
+    [syncToCloud]
+  );
+
+  // Attendance & Time Tracking
+  const recordClockIn = useCallback(
+    (staffId: string) => {
+      const staffMember = staff.find((s) => s.id === staffId);
+      if (!staffMember) return;
+      const today = new Date().toISOString().split('T')[0];
+      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      setAttendance((prev) => {
+        const existingIdx = prev.findIndex((a) => a.staffId === staffId && a.date === today);
+        if (existingIdx >= 0) {
+          const updated = [...prev];
+          updated[existingIdx] = {
+            ...updated[existingIdx],
+            clockInTime: nowTime,
+            status: 'present',
+          };
           return updated;
         }
-        return m;
-      })
-    );
-  }, [syncToCloud]);
+        const newRecord: AttendanceRecord = {
+          id: `att_${Date.now()}`,
+          staffId,
+          staffName: staffMember.name,
+          date: today,
+          clockInTime: nowTime,
+          status: 'present',
+          workHours: 8,
+          overtimeHours: 0,
+          notes: 'Clocked in at POS counter',
+        };
+        return [newRecord, ...prev];
+      });
+      audioFeedback.playSuccessChime();
+    },
+    [staff]
+  );
+
+  const recordClockOut = useCallback(
+    (staffId: string) => {
+      const today = new Date().toISOString().split('T')[0];
+      const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      setAttendance((prev) =>
+        prev.map((a) => {
+          if (a.staffId === staffId && a.date === today) {
+            return {
+              ...a,
+              clockOutTime: nowTime,
+              status: a.status === 'present' ? 'present' : a.status,
+            };
+          }
+          return a;
+        })
+      );
+      audioFeedback.playCashRegisterChime();
+    },
+    []
+  );
+
+  const addAttendanceRecord = useCallback(
+    (recordData: Omit<AttendanceRecord, 'id'>) => {
+      const newRec: AttendanceRecord = {
+        ...recordData,
+        id: `att_${Date.now()}`,
+      };
+      setAttendance((prev) => [newRec, ...prev]);
+    },
+    []
+  );
+
+  const updateAttendanceRecord = useCallback(
+    (id: string, updates: Partial<AttendanceRecord>) => {
+      setAttendance((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, ...updates } : a))
+      );
+    },
+    []
+  );
+
+  // Salary Advances & Payroll
+  const addSalaryAdvance = useCallback(
+    (advanceData: Omit<SalaryAdvanceRecord, 'id' | 'isDeducted'>) => {
+      const newAdv: SalaryAdvanceRecord = {
+        ...advanceData,
+        id: `adv_${Date.now()}`,
+        isDeducted: false,
+      };
+      setSalaryAdvances((prev) => [newAdv, ...prev]);
+      audioFeedback.playCoinDrop();
+    },
+    []
+  );
+
+  const generateMonthlyPayroll = useCallback(
+    (month: string, monthName: string) => {
+      // Calculate for all active staff
+      const generatedList: PayrollRecord[] = staff
+        .filter((s) => s.isActive)
+        .map((s) => {
+          // Attendance days in this month
+          const monthAttendance = attendance.filter(
+            (a) => a.staffId === s.id && a.date.startsWith(month)
+          );
+          const presentDays = monthAttendance.filter(
+            (a) => a.status === 'present' || a.status === 'late'
+          ).length;
+          const totalOT = monthAttendance.reduce((acc, a) => acc + (a.overtimeHours || 0), 0);
+          const otPay = totalOT * (s.salaryStructure?.overtimeHourlyRate || 150);
+
+          // Allowances total
+          const struct = s.salaryStructure || {
+            baseSalary: 20000,
+            foodAllowance: 2500,
+            transportAllowance: 1500,
+            otherAllowance: 500,
+            overtimeHourlyRate: 150,
+            pfDeduction: 1000,
+            taxTdsPercent: 1,
+          };
+          const allowancesTotal =
+            (struct.foodAllowance || 0) +
+            (struct.transportAllowance || 0) +
+            (struct.otherAllowance || 0);
+
+          // Undeducted advances
+          const staffAdvances = salaryAdvances.filter(
+            (adv) => adv.staffId === s.id && !adv.isDeducted
+          );
+          const advanceDeductions = staffAdvances.reduce((acc, adv) => acc + adv.amount, 0);
+
+          const grossSalary = struct.baseSalary + allowancesTotal + otPay;
+          const pfDeductions = struct.pfDeduction || 0;
+          const taxDeductions = Math.round((grossSalary * (struct.taxTdsPercent || 1)) / 100);
+          const netPayableSalary = Math.max(
+            0,
+            grossSalary - advanceDeductions - pfDeductions - taxDeductions
+          );
+
+          return {
+            id: `pr_${s.id}_${month}`,
+            staffId: s.id,
+            staffName: s.name,
+            employeeCode: s.employeeCode || 'EMP-1000',
+            month,
+            monthName,
+            baseSalary: struct.baseSalary,
+            totalDaysPresent: presentDays || 26,
+            totalOvertimeHours: totalOT,
+            overtimePay: otPay,
+            allowancesTotal,
+            bonusOrCommission: 0,
+            grossSalary,
+            advanceDeductions,
+            taxDeductions,
+            pfDeductions,
+            netPayableSalary,
+            status: 'pending',
+            generatedAt: new Date().toISOString(),
+          };
+        });
+
+      // Filter out existing payroll for this month and add newly generated
+      setPayrolls((prev) => [
+        ...generatedList,
+        ...prev.filter((p) => p.month !== month),
+      ]);
+      audioFeedback.playSuccessChime();
+    },
+    [staff, attendance, salaryAdvances]
+  );
+
+  const markPayrollPaid = useCallback(
+    (
+      payrollId: string,
+      paymentMethod: 'Bank Transfer' | 'Cash' | 'eSewa' | 'Fonepay',
+      transactionRef?: string
+    ) => {
+      setPayrolls((prev) =>
+        prev.map((p) => {
+          if (p.id === payrollId) {
+            // Also mark corresponding advances as deducted
+            setSalaryAdvances((currAdv) =>
+              currAdv.map((adv) =>
+                adv.staffId === p.staffId && !adv.isDeducted
+                  ? { ...adv, isDeducted: true, deductedInPayrollMonth: p.month }
+                  : adv
+              )
+            );
+
+            return {
+              ...p,
+              status: 'paid',
+              paymentDate: new Date().toISOString().split('T')[0],
+              paymentMethod,
+              transactionRef: transactionRef || `PAY-${Date.now().toString().slice(-6)}`,
+            };
+          }
+          return p;
+        })
+      );
+      audioFeedback.playCashRegisterChime();
+    },
+    []
+  );
 
   // Settings
   const updatePaymentQR = useCallback((updates: Partial<PaymentQRModel>) => {
@@ -1217,6 +1670,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSuppliers(initialSuppliers);
     setExpenses(initialExpenses);
     setStaff(initialStaff);
+    setAttendance(initialAttendance);
+    setSalaryAdvances(initialSalaryAdvances);
+    setPayrolls(initialPayrolls);
     setPaymentQR(initialPaymentQR);
     setPrinterSettings(initialPrinterSettings);
     setCart([]);
@@ -1239,6 +1695,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.setItem(STORAGE_KEYS.SUPPLIERS, JSON.stringify(initialSuppliers));
       localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(initialExpenses));
       localStorage.setItem(STORAGE_KEYS.STAFF, JSON.stringify(initialStaff));
+      localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(initialAttendance));
+      localStorage.setItem(STORAGE_KEYS.SALARY_ADVANCES, JSON.stringify(initialSalaryAdvances));
+      localStorage.setItem(STORAGE_KEYS.PAYROLLS, JSON.stringify(initialPayrolls));
     } catch {
       // Ignore
     }
@@ -1277,6 +1736,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateProduct,
         deleteProduct,
         restockProduct,
+        duplicateProduct,
+        reorderProducts,
+        bulkAddProducts,
+        categories,
+        addCategory,
+        deleteCategory,
         customers,
         udharoTransactions,
         addCustomer,
@@ -1300,7 +1765,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteExpense,
         staff,
         addStaff,
+        updateStaff,
+        deleteStaff,
         toggleStaffStatus,
+        updateStaffSalary,
+        updateStaffPermissions,
+        attendance,
+        recordClockIn,
+        recordClockOut,
+        addAttendanceRecord,
+        updateAttendanceRecord,
+        salaryAdvances,
+        addSalaryAdvance,
+        payrolls,
+        generateMonthlyPayroll,
+        markPayrollPaid,
         paymentQR,
         updatePaymentQR,
         printerSettings,

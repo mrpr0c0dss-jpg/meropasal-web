@@ -1735,9 +1735,8 @@ export const WAStoreDesignStudio: React.FC<WAStoreDesignStudioProps> = ({ onBack
               </div>
             </div>
 
-            {/* ── RIGHT COLUMN: INTERACTIVE BROWSER LIVE PREVIEW ─── */}
               {/* ── RIGHT COLUMN: INTERACTIVE BROWSER LIVE PREVIEW ─── */}
-              <div className={`lg:col-span-8 flex flex-col items-center space-y-3 ${mobileStudioTab === 'preview' ? 'block' : 'hidden lg:block'}`}>
+              <div className={`lg:col-span-8 flex flex-col items-center space-y-3 lg:sticky lg:top-4 lg:self-start ${mobileStudioTab === 'preview' ? 'block' : 'hidden lg:block'}`}>
                 {/* Viewport Switcher & Reload Control aligned with Design Header */}
                 <div className="w-full flex items-center justify-end gap-3 h-9">
                   <div className="flex items-center bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-800 rounded-xl p-0.5 shadow-2xs">

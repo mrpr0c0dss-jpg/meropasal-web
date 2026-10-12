@@ -32,6 +32,7 @@ import {
   Barcode,
   Rocket,
   ChevronRight,
+  ChevronDown,
   Compass,
   Palette,
   TrendingUp,
@@ -40,6 +41,7 @@ import {
   BarChart3,
   FileText,
   Share2,
+  LayoutList,
 } from 'lucide-react';
 import { DashboardView } from '../dashboard/DashboardView';
 import { PosView } from '../pos/PosView';
@@ -69,6 +71,15 @@ import { ShareStoreModal } from '../shared/ShareStoreModal';
 
 type AuthViewMode = 'app' | 'landing' | 'login' | 'register' | 'forgot' | 'shop-setup' | 'privacy' | 'dedicated-store' | 'design-studio';
 
+export interface NavSubItem {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  badge?: string;
+  badgeColor?: string;
+  onClick?: () => void;
+}
+
 interface NavItem {
   id: string;
   label: string;
@@ -79,6 +90,7 @@ interface NavItem {
   badgeColor?: string;
   isGreenHighlight?: boolean;
   onClick?: () => void;
+  subItems?: NavSubItem[];
 }
 
 interface NavSection {
@@ -118,6 +130,7 @@ export const AppShell: React.FC = () => {
   const [isBarcodeModalOpen, setIsBarcodeModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isProductsDropdownOpen, setIsProductsDropdownOpen] = useState(true);
 
   const isSidebarExpanded = isSidebarPinned || isSidebarHovered;
 
@@ -205,18 +218,23 @@ export const AppShell: React.FC = () => {
       items: [
         { id: 'dashboard', label: 'Overview', icon: TrendingUp },
         {
-          id: 'products',
-          label: 'All products',
+          id: 'products-group',
+          label: 'Products',
           icon: Package,
-          badge: `${totalProductsCount}`,
-          badgeColor: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono rounded-full px-2 py-0.5',
-        },
-        {
-          id: 'categories',
-          label: 'Categories',
-          icon: Tag,
-          badge: `${categoryCount}`,
-          badgeColor: 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-mono rounded-full px-2 py-0.5',
+          subItems: [
+            {
+              id: 'products',
+              label: 'All products',
+              icon: LayoutList,
+              badge: `${totalProductsCount}`,
+            },
+            {
+              id: 'categories',
+              label: 'Categories',
+              icon: Tag,
+              badge: `${categoryCount}`,
+            },
+          ],
         },
         {
           id: 'sales',
@@ -240,10 +258,10 @@ export const AppShell: React.FC = () => {
         { id: 'settings', label: 'Settings', icon: Settings },
         {
           id: 'staff',
-          label: 'Team',
+          label: 'Staff & HRM',
           icon: Users,
-          badge: 'NEW',
-          badgeColor: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 font-bold px-1.5 py-0.2 rounded text-[9px]',
+          badge: 'HRM',
+          badgeColor: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 font-bold px-1.5 py-0.2 rounded text-[9px]',
         },
       ],
     },
@@ -292,7 +310,22 @@ export const AppShell: React.FC = () => {
     },
   ];
 
-  const navigationItems = navigationSections.flatMap((s) => s.items);
+  const navigationItems = navigationSections.flatMap((s) =>
+    s.items.flatMap((item) =>
+      item.subItems
+        ? item.subItems.map((sub) => ({
+            id: sub.id,
+            label: sub.label,
+            icon: sub.icon,
+            shortcut: undefined,
+            badge: sub.badge,
+            badgeColor: sub.badgeColor,
+            isGreenHighlight: false,
+            onClick: sub.onClick,
+          }))
+        : [item]
+    )
+  );
 
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId);
@@ -318,9 +351,9 @@ export const AppShell: React.FC = () => {
   ).slice(0, 4);
 
   return (
-    <div className="min-h-screen bg-slate-50/70 dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-blue-500 selection:text-white antialiased">
+    <div className="h-screen bg-slate-50/70 dark:bg-[#0B0F19] text-slate-900 dark:text-slate-100 flex flex-col font-sans selection:bg-blue-500 selection:text-white antialiased overflow-hidden">
       {/* ── TOP MODERN APP BAR ───────────────────────────────── */}
-      <header className="sticky top-0 z-40 bg-white/85 dark:bg-[#111827]/85 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 h-16 px-4 lg:px-6 flex items-center justify-between transition-colors">
+      <header className="sticky top-0 z-40 bg-white/85 dark:bg-[#111827]/85 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 h-16 px-4 lg:px-6 flex items-center justify-between transition-colors shrink-0">
         {/* Left: Mobile Menu Trigger & Brand Logo */}
         <div className="flex items-center gap-3">
           <button
@@ -521,14 +554,14 @@ export const AppShell: React.FC = () => {
       </header>
 
       {/* ── BODY WITH SLEEK SIDEBAR ──────────────────────────── */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* ── DESKTOP SIDEBAR (AUTO-COLLAPSE ON MOUSE LEAVE / EXPAND ON HOVER) ─────────────────── */}
         <aside
           onMouseEnter={() => setIsSidebarHovered(true)}
           onMouseLeave={() => setIsSidebarHovered(false)}
-          className={`hidden lg:flex flex-col bg-white dark:bg-[#111827] border-r border-slate-200/80 dark:border-slate-800/80 transition-all duration-300 ease-in-out shrink-0 z-30 ${
+          className={`hidden lg:flex flex-col h-full bg-white dark:bg-[#111827] border-r border-slate-200/80 dark:border-slate-800/80 transition-all duration-300 ease-in-out shrink-0 z-30 ${
             isSidebarExpanded ? 'w-64 p-3.5' : 'w-[76px] p-2.5'
-          } space-y-3 overflow-hidden select-none`}
+          } space-y-3 overflow-y-auto overflow-x-hidden select-none scrollbar-none`}
         >
           {/* Shop Card */}
           <div
@@ -614,6 +647,114 @@ export const AppShell: React.FC = () => {
                 <div className="space-y-1">
                   {section.items.map((item) => {
                     const Icon = item.icon;
+
+                    // Support nested group items (e.g. Products -> All products & Categories)
+                    if (item.subItems && item.subItems.length > 0) {
+                      const isAnySubActive = item.subItems.some((sub) => activeTab === sub.id);
+
+                      if (!isSidebarExpanded) {
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => handleTabChange(item.subItems![0].id)}
+                            title={item.label}
+                            className={`w-full flex items-center justify-center p-2.5 rounded-xl transition-all duration-200 group relative cursor-pointer ${
+                              isAnySubActive
+                                ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 shadow-2xs'
+                                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                          >
+                            <Icon className={`w-4 h-4 shrink-0 ${
+                              isAnySubActive
+                                ? 'text-blue-600 dark:text-blue-400 stroke-[2.2]'
+                                : 'text-slate-400 group-hover:text-blue-600'
+                            }`} />
+                            <div className="absolute left-full ml-3 px-2.5 py-1 bg-slate-900 dark:bg-slate-800 text-white text-[11px] font-medium rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 whitespace-nowrap border border-slate-700/50 flex items-center gap-2">
+                              <span>{item.label}</span>
+                              <span className="px-1.5 py-0.2 rounded bg-blue-500/30 text-blue-300 text-[10px] font-mono">
+                                {totalProductsCount}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      }
+
+                      return (
+                        <div key={item.id} className="space-y-1 pt-0.5">
+                          {/* Products Parent Header with Dropdown Icon */}
+                          <div
+                            onClick={() => {
+                              setIsProductsDropdownOpen(!isProductsDropdownOpen);
+                            }}
+                            className="flex items-center justify-between px-3 py-2 cursor-pointer rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/60 transition group select-none"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <Icon className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400 stroke-[2.2] shrink-0" />
+                              <span className="font-extrabold text-[13px] text-slate-900 dark:text-slate-100 tracking-tight">
+                                {item.label}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:bg-blue-50 group-hover:text-blue-600 dark:group-hover:bg-blue-950/60 dark:group-hover:text-blue-400 transition">
+                                {totalProductsCount}
+                              </span>
+                              <ChevronDown
+                                className={`w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-transform duration-200 ${
+                                  isProductsDropdownOpen ? 'rotate-0' : '-rotate-90'
+                                }`}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Tree Sub-items with vertical guide line (Collapsible) */}
+                          {isProductsDropdownOpen && (
+                            <div className="ml-5 pl-2.5 border-l-2 border-slate-200/90 dark:border-slate-800 space-y-1.5 my-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                              {item.subItems.map((sub) => {
+                                const SubIcon = sub.icon;
+                                const isSubActive = activeTab === sub.id;
+
+                                return (
+                                  <button
+                                    key={sub.id}
+                                    onClick={() => {
+                                      if (sub.onClick) {
+                                        sub.onClick();
+                                      } else {
+                                        handleTabChange(sub.id);
+                                      }
+                                    }}
+                                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 cursor-pointer ${
+                                      isSubActive
+                                        ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/20'
+                                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <SubIcon className={`w-4 h-4 shrink-0 ${isSubActive ? 'text-white' : 'text-slate-400'}`} />
+                                      <span className="truncate whitespace-nowrap">{sub.label}</span>
+                                    </div>
+
+                                    {sub.badge && (
+                                      <span
+                                        className={
+                                          isSubActive
+                                            ? 'font-bold text-xs text-white shrink-0 ml-2 font-mono'
+                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold px-2 py-0.5 rounded-full text-xs shrink-0 ml-2 font-mono'
+                                        }
+                                      >
+                                        {sub.badge}
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
                     const isDesignActive = (item.id === 'design-studio' || item.id === 'design') && (activeTab === 'design-studio' || activeTab === 'design');
                     const isActive = activeTab === item.id || (item.id === 'customers' && activeTab === 'udharo') || (item.id === 'dashboard' && activeTab === 'overview') || (item.id === 'sales' && activeTab === 'orders') || (item.id === 'staff' && activeTab === 'team');
                     return (
@@ -905,6 +1046,82 @@ export const AppShell: React.FC = () => {
                     <div className="space-y-0.5">
                       {section.items.map((item) => {
                         const Icon = item.icon;
+
+                        // Support nested group items in mobile drawer (e.g. Products)
+                        if (item.subItems && item.subItems.length > 0) {
+                          return (
+                            <div key={item.id} className="space-y-1 pt-0.5">
+                              {/* Parent Group Header with Dropdown Icon */}
+                              <div
+                                onClick={() => setIsProductsDropdownOpen(!isProductsDropdownOpen)}
+                                className="flex items-center justify-between px-3 py-2 cursor-pointer rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition select-none"
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <Icon className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400 stroke-[2.2] shrink-0" />
+                                  <span className="font-extrabold text-[13px] text-slate-900 dark:text-slate-100">
+                                    {item.label}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-500">
+                                    {totalProductsCount}
+                                  </span>
+                                  <ChevronDown
+                                    className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-200 ${
+                                      isProductsDropdownOpen ? 'rotate-0' : '-rotate-90'
+                                    }`}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Tree Sub-items with vertical guide line (Collapsible) */}
+                              {isProductsDropdownOpen && (
+                                <div className="ml-5 pl-2.5 border-l-2 border-slate-200/90 dark:border-slate-800 space-y-1.5 my-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                                  {item.subItems.map((sub) => {
+                                    const SubIcon = sub.icon;
+                                    const isSubActive = activeTab === sub.id;
+
+                                    return (
+                                      <button
+                                        key={sub.id}
+                                        onClick={() => {
+                                          setIsMobileMenuOpen(false);
+                                          if (sub.onClick) {
+                                            sub.onClick();
+                                          } else {
+                                            handleTabChange(sub.id);
+                                          }
+                                        }}
+                                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                                          isSubActive
+                                            ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/20'
+                                            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2.5 min-w-0">
+                                          <SubIcon className={`w-4 h-4 shrink-0 ${isSubActive ? 'text-white' : 'text-slate-400'}`} />
+                                          <span className="truncate">{sub.label}</span>
+                                        </div>
+                                        {sub.badge && (
+                                          <span
+                                            className={
+                                              isSubActive
+                                                ? 'font-bold text-xs text-white shrink-0 ml-2 font-mono'
+                                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold px-2 py-0.5 rounded-full text-xs shrink-0 ml-2 font-mono'
+                                            }
+                                          >
+                                            {sub.badge}
+                                          </span>
+                                        )}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+
                         const isDesignActive = (item.id === 'design-studio' || item.id === 'design') && (activeTab === 'design-studio' || activeTab === 'design');
                         const isActive = activeTab === item.id || (item.id === 'customers' && activeTab === 'udharo') || (item.id === 'dashboard' && activeTab === 'overview') || (item.id === 'sales' && activeTab === 'orders') || (item.id === 'staff' && activeTab === 'team');
                         return (
@@ -1021,7 +1238,11 @@ export const AppShell: React.FC = () => {
         )}
 
         {/* ── ACTIVE VIEW ROUTER ───────────────────────────────── */}
-        <main className="flex-1 overflow-y-auto pb-20 lg:pb-6">
+        <main
+          className={`flex-1 min-h-0 h-full ${
+            activeTab === 'pos' ? 'overflow-hidden p-0' : 'overflow-y-auto pb-20 lg:pb-6'
+          }`}
+        >
           {(activeTab === 'dashboard' || activeTab === 'overview') && <DashboardView onNavigate={handleTabChange} />}
           {activeTab === 'pos' && <PosView />}
           {activeTab === 'products' && <ProductsView />}

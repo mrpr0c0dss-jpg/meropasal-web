@@ -230,11 +230,11 @@ export const PosView: React.FC = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col lg:flex-row gap-4 p-3 lg:p-6 overflow-hidden">
+    <div className="h-full max-h-full flex flex-col lg:flex-row gap-4 p-3 lg:p-6 overflow-hidden min-h-0">
       {/* ── LEFT COLUMN: PRODUCT SEARCH & GRID ───────────────── */}
-      <div className="flex-1 flex flex-col bg-white dark:bg-[#111827] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-[#111827] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
         {/* Search & Actions Bar */}
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800/80 space-y-3">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800/80 space-y-3 shrink-0">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -295,7 +295,7 @@ export const PosView: React.FC = () => {
         </div>
 
         {/* Products Grid */}
-        <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-3.5">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 gap-3.5">
           {filteredProducts.length === 0 ? (
             <div className="col-span-full flex flex-col items-center justify-center p-12 text-center text-slate-400">
               <ShoppingBag className="w-12 h-12 stroke-[1.5] mb-2 opacity-40" />
@@ -367,9 +367,9 @@ export const PosView: React.FC = () => {
       </div>
 
       {/* ── RIGHT COLUMN: CART & CHECKOUT TERMINAL (DESKTOP) ─── */}
-      <div className="hidden lg:flex w-[400px] xl:w-[440px] flex-col bg-white dark:bg-[#111827] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div className="hidden lg:flex w-[400px] xl:w-[440px] h-full max-h-full shrink-0 flex-col bg-white dark:bg-[#111827] rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden sticky top-0 self-start">
         {/* Cart Header */}
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-slate-50/60 dark:bg-slate-800/30">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800/80 flex items-center justify-between bg-slate-50/60 dark:bg-slate-800/30 shrink-0">
           <div className="flex items-center gap-2">
             <ShoppingBag className="w-5 h-5 text-blue-600" />
             <h3 className="font-bold text-slate-900 dark:text-white text-sm">
@@ -379,7 +379,7 @@ export const PosView: React.FC = () => {
           {cart.length > 0 && (
             <button
               onClick={clearCart}
-              className="text-xs text-red-500 hover:text-red-700 font-semibold transition"
+              className="text-xs text-red-500 hover:text-red-700 font-semibold transition cursor-pointer"
             >
               Clear Cart
             </button>
@@ -387,14 +387,14 @@ export const PosView: React.FC = () => {
         </div>
 
         {/* Customer Selector */}
-        <div className="p-3.5 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/30 dark:bg-slate-800/20">
+        <div className="p-3.5 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/30 dark:bg-slate-800/20 shrink-0">
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               {t.selectCustomer}
             </label>
             <button
               onClick={() => setIsAddCustomerOpen(true)}
-              className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-bold inline-flex items-center gap-1"
+              className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-bold inline-flex items-center gap-1 cursor-pointer"
             >
               <UserPlus className="w-3.5 h-3.5" />
               {t.addNewCustomer}
@@ -403,7 +403,7 @@ export const PosView: React.FC = () => {
           <select
             value={selectedCustomerId}
             onChange={(e) => setSelectedCustomerId(e.target.value)}
-            className="w-full text-xs py-2 px-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500/20 outline-hidden"
+            className="w-full text-xs py-2 px-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-medium focus:ring-2 focus:ring-blue-500/20 outline-hidden cursor-pointer"
           >
             <option value="">{t.walkInCustomer}</option>
             {customers.map((c) => (
@@ -421,7 +421,7 @@ export const PosView: React.FC = () => {
         </div>
 
         {/* Cart Items Scroll */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
           {cart.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-6 text-slate-400">
               <ShoppingBag className="w-12 h-12 opacity-25 mb-2" />
@@ -474,7 +474,7 @@ export const PosView: React.FC = () => {
         </div>
 
         {/* Calculation & Checkout Footer */}
-        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900 space-y-3">
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900 space-y-3 shrink-0">
           {/* Subtotal, Discount & VAT settings */}
           <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
             <div className="flex justify-between font-medium">
