@@ -92,6 +92,7 @@ export const DedicatedStoreWebsite: React.FC<DedicatedStoreWebsiteProps> = ({
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [storeQrTab, setStoreQrTab] = useState<'fonepay' | 'esewa' | 'khalti' | 'other'>('fonepay');
   const [copiedLink, setCopiedLink] = useState(false);
 
   // Customer Checkout Form
@@ -940,21 +941,152 @@ export const DedicatedStoreWebsite: React.FC<DedicatedStoreWebsiteProps> = ({
       {isQrModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in zoom-in-95">
           <div className="bg-white dark:bg-[#111827] rounded-3xl p-6 sm:p-8 max-w-sm w-full text-center space-y-4 shadow-2xl border border-slate-200 dark:border-slate-800">
-            <div className="w-12 h-12 rounded-2xl bg-red-100 dark:bg-red-950/60 text-red-600 flex items-center justify-center mx-auto font-black text-sm">
-              Fonepay
-            </div>
-            <div>
-              <h3 className="font-black text-lg text-slate-900 dark:text-white">{shop.name}</h3>
-              <p className="text-xs text-slate-400 font-mono">Merchant: {paymentQR?.fonepayMerchantCode || 'MP-KTM-9841'}</p>
-            </div>
-
-            <div className="p-4 bg-white rounded-2xl border border-slate-200 dark:border-slate-700 inline-block shadow-inner">
-              <div className="w-44 h-44 bg-slate-900 rounded-xl flex items-center justify-center text-white p-2">
-                <QrCode className="w-36 h-36 text-white" />
-              </div>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white">Scan &amp; Pay via QR</h3>
+              <button
+                onClick={() => setIsQrModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <p className="text-xs text-slate-500">Scan via any Nepali Mobile Banking or eSewa App</p>
+            {/* Provider Switcher Tabs */}
+            <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setStoreQrTab('fonepay')}
+                className={`py-1.5 rounded-lg transition-all ${
+                  storeQrTab === 'fonepay'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Fonepay
+              </button>
+              <button
+                type="button"
+                onClick={() => setStoreQrTab('esewa')}
+                className={`py-1.5 rounded-lg transition-all ${
+                  storeQrTab === 'esewa'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                eSewa
+              </button>
+              <button
+                type="button"
+                onClick={() => setStoreQrTab('khalti')}
+                className={`py-1.5 rounded-lg transition-all ${
+                  storeQrTab === 'khalti'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Khalti
+              </button>
+              <button
+                type="button"
+                onClick={() => setStoreQrTab('other')}
+                className={`py-1.5 rounded-lg transition-all ${
+                  storeQrTab === 'other'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Bank
+              </button>
+            </div>
+
+            {/* Active QR View */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center">
+              {storeQrTab === 'fonepay' && (
+                <>
+                  {paymentQR?.fonepayQrUrl ? (
+                    <img
+                      src={paymentQR.fonepayQrUrl}
+                      alt="Fonepay QR"
+                      className="w-48 h-48 object-contain rounded-xl bg-white p-2 border border-slate-200 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-44 h-44 bg-white rounded-xl flex items-center justify-center p-2 border border-slate-200">
+                      <QrCode className="w-36 h-36 text-rose-600" />
+                    </div>
+                  )}
+                  <h4 className="font-bold text-sm mt-3 text-slate-900 dark:text-white">{shop.name}</h4>
+                  <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                    Merchant Code: {paymentQR?.fonepayMerchantCode || 'MP-KTM-9841'}
+                  </p>
+                </>
+              )}
+
+              {storeQrTab === 'esewa' && (
+                <>
+                  {paymentQR?.esewaQrUrl ? (
+                    <img
+                      src={paymentQR.esewaQrUrl}
+                      alt="eSewa QR"
+                      className="w-48 h-48 object-contain rounded-xl bg-white p-2 border border-slate-200 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-44 h-44 bg-white rounded-xl flex items-center justify-center p-2 border border-slate-200">
+                      <QrCode className="w-36 h-36 text-emerald-600" />
+                    </div>
+                  )}
+                  <h4 className="font-bold text-sm mt-3 text-slate-900 dark:text-white">{shop.name}</h4>
+                  <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                    eSewa ID: {paymentQR?.esewaId || shop.phone || '9841234567'}
+                  </p>
+                </>
+              )}
+
+              {storeQrTab === 'khalti' && (
+                <>
+                  {paymentQR?.khaltiQrUrl ? (
+                    <img
+                      src={paymentQR.khaltiQrUrl}
+                      alt="Khalti QR"
+                      className="w-48 h-48 object-contain rounded-xl bg-white p-2 border border-slate-200 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-44 h-44 bg-white rounded-xl flex items-center justify-center p-2 border border-slate-200">
+                      <QrCode className="w-36 h-36 text-purple-600" />
+                    </div>
+                  )}
+                  <h4 className="font-bold text-sm mt-3 text-slate-900 dark:text-white">{shop.name}</h4>
+                  <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                    Khalti ID: {paymentQR?.khaltiId || shop.phone || '9841234567'}
+                  </p>
+                </>
+              )}
+
+              {storeQrTab === 'other' && (
+                <>
+                  {paymentQR?.otherQrUrl ? (
+                    <img
+                      src={paymentQR.otherQrUrl}
+                      alt="Bank QR"
+                      className="w-48 h-48 object-contain rounded-xl bg-white p-2 border border-slate-200 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-44 h-44 bg-white rounded-xl flex items-center justify-center p-2 border border-slate-200">
+                      <QrCode className="w-36 h-36 text-blue-600" />
+                    </div>
+                  )}
+                  <h4 className="font-bold text-sm mt-3 text-slate-900 dark:text-white">
+                    {paymentQR?.otherQrLabel || shop.name}
+                  </h4>
+                  {paymentQR?.generalQrUrl && (
+                    <p className="text-[11px] text-slate-500 font-mono mt-0.5">
+                      Ref / A/C: {paymentQR.generalQrUrl}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+
+            <p className="text-xs text-slate-500">Scan via any Nepali Mobile Banking or Wallet App</p>
 
             <button
               onClick={() => setIsQrModalOpen(false)}

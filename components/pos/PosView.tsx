@@ -65,6 +65,7 @@ export const PosView: React.FC = () => {
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [customPaidAmount, setCustomPaidAmount] = useState<string>('');
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [counterQrProvider, setCounterQrProvider] = useState<'fonepay' | 'esewa' | 'khalti' | 'other'>('fonepay');
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [isQuickAddProductOpen, setIsQuickAddProductOpen] = useState(false);
   const [isBarcodeCameraOpen, setIsBarcodeCameraOpen] = useState(false);
@@ -523,10 +524,10 @@ export const PosView: React.FC = () => {
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-[11px] font-bold text-slate-500 uppercase">{t.paymentMethod}</label>
-              {(paymentQR.esewaId || paymentQR.khaltiId || paymentQR.fonepayMerchantCode) && (
+              {(paymentQR.esewaId || paymentQR.khaltiId || paymentQR.fonepayMerchantCode || paymentQR.esewaQrUrl || paymentQR.fonepayQrUrl || paymentQR.khaltiQrUrl || paymentQR.otherQrUrl) && (
                 <button
                   onClick={() => setIsQrModalOpen(true)}
-                  className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1"
+                  className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1 cursor-pointer"
                 >
                   <QrCode className="w-3.5 h-3.5" />
                   Show Counter QR
@@ -785,7 +786,7 @@ export const PosView: React.FC = () => {
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-[11px] font-bold text-slate-500 uppercase">{t.paymentMethod}</label>
-                  {(paymentQR.esewaId || paymentQR.khaltiId || paymentQR.fonepayMerchantCode) && (
+                  {(paymentQR.esewaId || paymentQR.khaltiId || paymentQR.fonepayMerchantCode || paymentQR.esewaQrUrl || paymentQR.fonepayQrUrl || paymentQR.khaltiQrUrl || paymentQR.otherQrUrl) && (
                     <button
                       onClick={() => setIsQrModalOpen(true)}
                       className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1 cursor-pointer"
@@ -865,32 +866,163 @@ export const PosView: React.FC = () => {
 
       {/* ── COUNTER QR MODAL ─────────────────────────────────── */}
       {isQrModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-slate-200 dark:border-slate-800 text-center">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">
-                Payment QR Code (Counter Desk)
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-slate-200 dark:border-slate-800 text-center space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                <QrCode className="w-4 h-4 text-blue-600" />
+                Payment QR (Counter Desk)
               </h3>
               <button
                 onClick={() => setIsQrModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="bg-slate-100 dark:bg-slate-800 p-6 rounded-3xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700">
-              <QrCode className="w-40 h-40 text-slate-900 dark:text-white" />
-              <p className="font-black text-sm mt-3 text-slate-900 dark:text-white">{shop.name}</p>
-              <p className="text-xs text-slate-500 mt-0.5">Fonepay / eSewa / Khalti / Mobile Banking</p>
-              <div className="mt-2 text-xs font-mono font-bold bg-white dark:bg-slate-900 px-3 py-1 rounded-xl border">
-                Merchant: {paymentQR.esewaId || paymentQR.fonepayMerchantCode || '9841234567'}
-              </div>
+            {/* Provider Switcher Tabs */}
+            <div className="grid grid-cols-4 gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-bold">
+              <button
+                type="button"
+                onClick={() => setCounterQrProvider('fonepay')}
+                className={`py-1.5 rounded-lg transition-all ${
+                  counterQrProvider === 'fonepay'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Fonepay
+              </button>
+              <button
+                type="button"
+                onClick={() => setCounterQrProvider('esewa')}
+                className={`py-1.5 rounded-lg transition-all ${
+                  counterQrProvider === 'esewa'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                eSewa
+              </button>
+              <button
+                type="button"
+                onClick={() => setCounterQrProvider('khalti')}
+                className={`py-1.5 rounded-lg transition-all ${
+                  counterQrProvider === 'khalti'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Khalti
+              </button>
+              <button
+                type="button"
+                onClick={() => setCounterQrProvider('other')}
+                className={`py-1.5 rounded-lg transition-all ${
+                  counterQrProvider === 'other'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Bank
+              </button>
+            </div>
+
+            {/* QR Card Container */}
+            <div className="bg-slate-50 dark:bg-slate-800/80 p-5 rounded-2xl flex flex-col items-center justify-center border border-slate-200 dark:border-slate-700">
+              {counterQrProvider === 'fonepay' && (
+                <>
+                  {paymentQR.fonepayQrUrl ? (
+                    <img
+                      src={paymentQR.fonepayQrUrl}
+                      alt="Fonepay QR"
+                      className="w-48 h-48 object-contain rounded-xl bg-white p-2 border border-slate-200 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-44 h-44 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-700 p-2">
+                      <QrCode className="w-36 h-36 text-rose-600" />
+                    </div>
+                  )}
+                  <p className="font-black text-sm mt-3 text-slate-900 dark:text-white">{shop.name}</p>
+                  <p className="text-[11px] text-slate-500">Scan with any Nepali Mobile Banking or Fonepay</p>
+                  <div className="mt-2 text-xs font-mono font-bold bg-white dark:bg-slate-900 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                    Merchant: {paymentQR.fonepayMerchantCode || 'MP-KTM-9841'}
+                  </div>
+                </>
+              )}
+
+              {counterQrProvider === 'esewa' && (
+                <>
+                  {paymentQR.esewaQrUrl ? (
+                    <img
+                      src={paymentQR.esewaQrUrl}
+                      alt="eSewa QR"
+                      className="w-48 h-48 object-contain rounded-xl bg-white p-2 border border-slate-200 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-44 h-44 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-700 p-2">
+                      <QrCode className="w-36 h-36 text-emerald-600" />
+                    </div>
+                  )}
+                  <p className="font-black text-sm mt-3 text-slate-900 dark:text-white">{shop.name}</p>
+                  <p className="text-[11px] text-slate-500">Scan with eSewa Mobile Wallet</p>
+                  <div className="mt-2 text-xs font-mono font-bold bg-white dark:bg-slate-900 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                    eSewa ID: {paymentQR.esewaId || shop.phone || '9841234567'}
+                  </div>
+                </>
+              )}
+
+              {counterQrProvider === 'khalti' && (
+                <>
+                  {paymentQR.khaltiQrUrl ? (
+                    <img
+                      src={paymentQR.khaltiQrUrl}
+                      alt="Khalti QR"
+                      className="w-48 h-48 object-contain rounded-xl bg-white p-2 border border-slate-200 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-44 h-44 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-700 p-2">
+                      <QrCode className="w-36 h-36 text-purple-600" />
+                    </div>
+                  )}
+                  <p className="font-black text-sm mt-3 text-slate-900 dark:text-white">{shop.name}</p>
+                  <p className="text-[11px] text-slate-500">Scan with Khalti Digital Wallet</p>
+                  <div className="mt-2 text-xs font-mono font-bold bg-white dark:bg-slate-900 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                    Khalti ID: {paymentQR.khaltiId || shop.phone || '9841234567'}
+                  </div>
+                </>
+              )}
+
+              {counterQrProvider === 'other' && (
+                <>
+                  {paymentQR.otherQrUrl ? (
+                    <img
+                      src={paymentQR.otherQrUrl}
+                      alt="Bank QR"
+                      className="w-48 h-48 object-contain rounded-xl bg-white p-2 border border-slate-200 shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-44 h-44 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center border border-slate-200 dark:border-slate-700 p-2">
+                      <QrCode className="w-36 h-36 text-blue-600" />
+                    </div>
+                  )}
+                  <p className="font-black text-sm mt-3 text-slate-900 dark:text-white">
+                    {paymentQR.otherQrLabel || shop.name}
+                  </p>
+                  <p className="text-[11px] text-slate-500">Bank Transfer / Smart QR</p>
+                  {paymentQR.generalQrUrl && (
+                    <div className="mt-2 text-xs font-mono font-bold bg-white dark:bg-slate-900 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+                      Ref: {paymentQR.generalQrUrl}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             <button
               onClick={() => setIsQrModalOpen(false)}
-              className="mt-4 w-full py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold"
+              className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition cursor-pointer"
             >
               Done / Close
             </button>

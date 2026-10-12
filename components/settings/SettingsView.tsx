@@ -36,6 +36,9 @@ import {
   Building,
   CheckCircle2,
   Share2,
+  Upload,
+  Image as ImageIcon,
+  X,
 } from 'lucide-react';
 
 type SettingsTab =
@@ -74,6 +77,36 @@ export const SettingsView: React.FC = () => {
   const [printerForm, setPrinterForm] = useState({ ...printerSettings });
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [previewQrImage, setPreviewQrImage] = useState<{ title: string; url: string } | null>(null);
+
+  React.useEffect(() => {
+    if (paymentQR) {
+      setQrForm((prev) => ({ ...prev, ...paymentQR }));
+    }
+  }, [paymentQR]);
+
+  const handleQrUpload = (
+    key: 'esewaQrUrl' | 'fonepayQrUrl' | 'khaltiQrUrl' | 'otherQrUrl',
+    file?: File
+  ) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('QR image file size must be less than 5MB');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string;
+      if (result) {
+        setQrForm((prev) => ({ ...prev, [key]: result }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveQr = (key: 'esewaQrUrl' | 'fonepayQrUrl' | 'khaltiQrUrl' | 'otherQrUrl') => {
+    setQrForm((prev) => ({ ...prev, [key]: '' }));
+  };
 
   // Business Calculator state
   const [isCalcOpen, setIsCalcOpen] = useState(false);
@@ -757,56 +790,457 @@ export const SettingsView: React.FC = () => {
               )}
             </div>
 
-            {/* QR Payment Channels */}
-            <div className="bg-white dark:bg-[#111827] rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-              <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 dark:border-slate-800">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600">
-                  <QrCode className="w-5 h-5" />
+            {/* QR Payment Channels & Uploaders */}
+            <div className="bg-white dark:bg-[#111827] rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 flex items-center justify-center text-indigo-600">
+                    <QrCode className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm sm:text-base text-slate-900 dark:text-white">
+                      Payment QR Codes &amp; Merchant Accounts
+                    </h3>
+                    <p className="text-xs text-slate-400">
+                      Upload your official QR codes (eSewa, Fonepay, Khalti, Bank/Other) for POS counter scanning and online checkout
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">QR Payment Credentials</h3>
-                  <p className="text-xs text-slate-400">IDs and numbers printed on customer receipts and checkout popups</p>
+                <div className="flex items-center gap-1.5 self-start sm:self-auto px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 text-xs font-semibold">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Instant Scan Ready
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                <div>
-                  <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                    eSewa ID / Number
-                  </label>
-                  <input
-                    type="text"
-                    value={qrForm.esewaId || ''}
-                    onChange={(e) => setQrForm({ ...qrForm, esewaId: e.target.value })}
-                    placeholder="e.g. 9841234567"
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
-                  />
+              {/* 4 Gateway Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 text-xs">
+                {/* 1. eSewa */}
+                <div className="p-5 rounded-2xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 hover:border-emerald-500/40 transition-all space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-black text-xs tracking-wide shadow-xs">
+                        eSewa
+                      </span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">Mobile Wallet</span>
+                    </div>
+                    {qrForm.esewaQrUrl ? (
+                      <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full">
+                        <CheckCircle2 className="w-3 h-3" /> QR Active
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-slate-400 bg-slate-200/60 dark:bg-slate-700/60 px-2 py-0.5 rounded-full">
+                        No QR Uploaded
+                      </span>
+                    )}
+                  </div>
+
+                  {/* QR Image Box */}
+                  <div>
+                    <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+                      eSewa QR Code Image
+                    </label>
+                    {qrForm.esewaQrUrl ? (
+                      <div className="flex items-center gap-4 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <div
+                          onClick={() => setPreviewQrImage({ title: 'eSewa QR Code', url: qrForm.esewaQrUrl! })}
+                          className="relative group cursor-pointer shrink-0"
+                          title="Click to zoom preview"
+                        >
+                          <img
+                            src={qrForm.esewaQrUrl}
+                            alt="eSewa QR"
+                            className="w-24 h-24 object-contain rounded-xl border border-slate-100 dark:border-slate-800 bg-white p-1"
+                          />
+                          <div className="absolute inset-0 bg-black/40 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold">
+                            Zoom
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                            QR image is ready for cashier desk &amp; checkout.
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-[11px] flex items-center gap-1 transition">
+                              <Upload className="w-3 h-3" />
+                              Change
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => e.target.files?.[0] && handleQrUpload('esewaQrUrl', e.target.files[0])}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveQr('esewaQrUrl')}
+                              className="px-3 py-1.5 rounded-xl bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 font-semibold text-[11px] flex items-center gap-1 transition"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-500 bg-white dark:bg-slate-900 cursor-pointer transition group text-center">
+                        <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                          <Upload className="w-5 h-5" />
+                        </div>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                          Click to upload eSewa QR
+                        </span>
+                        <span className="text-[11px] text-slate-400 mt-0.5">PNG, JPG, WebP up to 5MB</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => e.target.files?.[0] && handleQrUpload('esewaQrUrl', e.target.files[0])}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  {/* Merchant ID / Number */}
+                  <div>
+                    <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      eSewa ID / Mobile Number
+                    </label>
+                    <input
+                      type="text"
+                      value={qrForm.esewaId || ''}
+                      onChange={(e) => setQrForm({ ...qrForm, esewaId: e.target.value })}
+                      placeholder="e.g. 9841234567"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                    Khalti ID / Number
-                  </label>
-                  <input
-                    type="text"
-                    value={qrForm.khaltiId || ''}
-                    onChange={(e) => setQrForm({ ...qrForm, khaltiId: e.target.value })}
-                    placeholder="e.g. 9841234567"
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
-                  />
+                {/* 2. Fonepay / PhonePay */}
+                <div className="p-5 rounded-2xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 hover:border-rose-500/40 transition-all space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-black text-xs tracking-wide shadow-xs">
+                        Fonepay
+                      </span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">PhonePay / Interbank</span>
+                    </div>
+                    {qrForm.fonepayQrUrl ? (
+                      <span className="flex items-center gap-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-100/70 dark:bg-rose-950/50 px-2 py-0.5 rounded-full">
+                        <CheckCircle2 className="w-3 h-3" /> QR Active
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-slate-400 bg-slate-200/60 dark:bg-slate-700/60 px-2 py-0.5 rounded-full">
+                        No QR Uploaded
+                      </span>
+                    )}
+                  </div>
+
+                  {/* QR Image Box */}
+                  <div>
+                    <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+                      Fonepay QR Code Image
+                    </label>
+                    {qrForm.fonepayQrUrl ? (
+                      <div className="flex items-center gap-4 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <div
+                          onClick={() => setPreviewQrImage({ title: 'Fonepay QR Code', url: qrForm.fonepayQrUrl! })}
+                          className="relative group cursor-pointer shrink-0"
+                          title="Click to zoom preview"
+                        >
+                          <img
+                            src={qrForm.fonepayQrUrl}
+                            alt="Fonepay QR"
+                            className="w-24 h-24 object-contain rounded-xl border border-slate-100 dark:border-slate-800 bg-white p-1"
+                          />
+                          <div className="absolute inset-0 bg-black/40 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold">
+                            Zoom
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                            Scannable by all Nepali Mobile Banking apps.
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-[11px] flex items-center gap-1 transition">
+                              <Upload className="w-3 h-3" />
+                              Change
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => e.target.files?.[0] && handleQrUpload('fonepayQrUrl', e.target.files[0])}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveQr('fonepayQrUrl')}
+                              className="px-3 py-1.5 rounded-xl bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 font-semibold text-[11px] flex items-center gap-1 transition"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-rose-500 dark:hover:border-rose-500 bg-white dark:bg-slate-900 cursor-pointer transition group text-center">
+                        <div className="w-10 h-10 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                          <Upload className="w-5 h-5" />
+                        </div>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                          Click to upload Fonepay QR
+                        </span>
+                        <span className="text-[11px] text-slate-400 mt-0.5">PNG, JPG, WebP up to 5MB</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => e.target.files?.[0] && handleQrUpload('fonepayQrUrl', e.target.files[0])}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  {/* Merchant Code */}
+                  <div>
+                    <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Fonepay Merchant Code / Terminal ID
+                    </label>
+                    <input
+                      type="text"
+                      value={qrForm.fonepayMerchantCode || ''}
+                      onChange={(e) => setQrForm({ ...qrForm, fonepayMerchantCode: e.target.value })}
+                      placeholder="e.g. MP-KTM-9841"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
-                    Fonepay Merchant Code
-                  </label>
-                  <input
-                    type="text"
-                    value={qrForm.fonepayMerchantCode || ''}
-                    onChange={(e) => setQrForm({ ...qrForm, fonepayMerchantCode: e.target.value })}
-                    placeholder="e.g. MEROPASAL998"
-                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
-                  />
+                {/* 3. Khalti */}
+                <div className="p-5 rounded-2xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 hover:border-purple-500/40 transition-all space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-lg bg-purple-600 text-white font-black text-xs tracking-wide shadow-xs">
+                        Khalti
+                      </span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">Digital Wallet</span>
+                    </div>
+                    {qrForm.khaltiQrUrl ? (
+                      <span className="flex items-center gap-1 text-[11px] font-bold text-purple-600 dark:text-purple-400 bg-purple-100/70 dark:bg-purple-950/50 px-2 py-0.5 rounded-full">
+                        <CheckCircle2 className="w-3 h-3" /> QR Active
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-slate-400 bg-slate-200/60 dark:bg-slate-700/60 px-2 py-0.5 rounded-full">
+                        No QR Uploaded
+                      </span>
+                    )}
+                  </div>
+
+                  {/* QR Image Box */}
+                  <div>
+                    <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+                      Khalti QR Code Image
+                    </label>
+                    {qrForm.khaltiQrUrl ? (
+                      <div className="flex items-center gap-4 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <div
+                          onClick={() => setPreviewQrImage({ title: 'Khalti QR Code', url: qrForm.khaltiQrUrl! })}
+                          className="relative group cursor-pointer shrink-0"
+                          title="Click to zoom preview"
+                        >
+                          <img
+                            src={qrForm.khaltiQrUrl}
+                            alt="Khalti QR"
+                            className="w-24 h-24 object-contain rounded-xl border border-slate-100 dark:border-slate-800 bg-white p-1"
+                          />
+                          <div className="absolute inset-0 bg-black/40 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold">
+                            Zoom
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                            Khalti wallet scan &amp; pay QR is active.
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-[11px] flex items-center gap-1 transition">
+                              <Upload className="w-3 h-3" />
+                              Change
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => e.target.files?.[0] && handleQrUpload('khaltiQrUrl', e.target.files[0])}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveQr('khaltiQrUrl')}
+                              className="px-3 py-1.5 rounded-xl bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 font-semibold text-[11px] flex items-center gap-1 transition"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-purple-500 dark:hover:border-purple-500 bg-white dark:bg-slate-900 cursor-pointer transition group text-center">
+                        <div className="w-10 h-10 rounded-full bg-purple-50 dark:bg-purple-950/60 text-purple-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                          <Upload className="w-5 h-5" />
+                        </div>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                          Click to upload Khalti QR
+                        </span>
+                        <span className="text-[11px] text-slate-400 mt-0.5">PNG, JPG, WebP up to 5MB</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => e.target.files?.[0] && handleQrUpload('khaltiQrUrl', e.target.files[0])}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  {/* Merchant ID / Number */}
+                  <div>
+                    <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      Khalti ID / Registered Mobile
+                    </label>
+                    <input
+                      type="text"
+                      value={qrForm.khaltiId || ''}
+                      onChange={(e) => setQrForm({ ...qrForm, khaltiId: e.target.value })}
+                      placeholder="e.g. 9841234567"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* 4. Other (Bank QR / Smart QR / Custom) */}
+                <div className="p-5 rounded-2xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 hover:border-blue-500/40 transition-all space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-lg bg-blue-600 text-white font-black text-xs tracking-wide shadow-xs">
+                        Other QR
+                      </span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">Bank / Smart QR</span>
+                    </div>
+                    {qrForm.otherQrUrl ? (
+                      <span className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-100/70 dark:bg-blue-950/50 px-2 py-0.5 rounded-full">
+                        <CheckCircle2 className="w-3 h-3" /> QR Active
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-slate-400 bg-slate-200/60 dark:bg-slate-700/60 px-2 py-0.5 rounded-full">
+                        No QR Uploaded
+                      </span>
+                    )}
+                  </div>
+
+                  {/* QR Image Box */}
+                  <div>
+                    <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1.5">
+                      Bank / Other QR Code Image
+                    </label>
+                    {qrForm.otherQrUrl ? (
+                      <div className="flex items-center gap-4 p-3 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
+                        <div
+                          onClick={() => setPreviewQrImage({ title: qrForm.otherQrLabel || 'Bank QR Code', url: qrForm.otherQrUrl! })}
+                          className="relative group cursor-pointer shrink-0"
+                          title="Click to zoom preview"
+                        >
+                          <img
+                            src={qrForm.otherQrUrl}
+                            alt="Other QR"
+                            className="w-24 h-24 object-contain rounded-xl border border-slate-100 dark:border-slate-800 bg-white p-1"
+                          />
+                          <div className="absolute inset-0 bg-black/40 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold">
+                            Zoom
+                          </div>
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                            Custom bank or merchant QR code is ready.
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <label className="cursor-pointer px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-[11px] flex items-center gap-1 transition">
+                              <Upload className="w-3 h-3" />
+                              Change
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => e.target.files?.[0] && handleQrUpload('otherQrUrl', e.target.files[0])}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveQr('otherQrUrl')}
+                              className="px-3 py-1.5 rounded-xl bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 font-semibold text-[11px] flex items-center gap-1 transition"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="flex flex-col items-center justify-center p-5 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-blue-500 dark:hover:border-blue-500 bg-white dark:bg-slate-900 cursor-pointer transition group text-center">
+                        <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                          <Upload className="w-5 h-5" />
+                        </div>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">
+                          Click to upload Bank / Other QR
+                        </span>
+                        <span className="text-[11px] text-slate-400 mt-0.5">PNG, JPG, WebP up to 5MB</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => e.target.files?.[0] && handleQrUpload('otherQrUrl', e.target.files[0])}
+                        />
+                      </label>
+                    )}
+                  </div>
+
+                  {/* Other QR Label and Account */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                        QR Title / Bank Name
+                      </label>
+                      <input
+                        type="text"
+                        value={qrForm.otherQrLabel || ''}
+                        onChange={(e) => setQrForm({ ...qrForm, otherQrLabel: e.target.value })}
+                        placeholder="e.g. NIC Asia QR, Nabil Bank"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                        Account / Ref Number <span className="text-slate-400 font-normal">(optional)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={qrForm.generalQrUrl || ''}
+                        onChange={(e) => setQrForm({ ...qrForm, generalQrUrl: e.target.value })}
+                        placeholder="e.g. A/C: 1029384756"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Info notice */}
+              <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/60 flex items-start gap-3 text-xs text-blue-900 dark:text-blue-300">
+                <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-semibold">Where will these QR codes be displayed?</p>
+                  <p className="text-blue-700/90 dark:text-blue-400/90 leading-relaxed">
+                    Uploaded QR code images are automatically displayed on the POS Counter Screen (&quot;Show Counter QR&quot;) and presented to buyers at your online WhatsApp store checkout for fast payments.
+                  </p>
                 </div>
               </div>
             </div>
@@ -1499,6 +1933,37 @@ export const SettingsView: React.FC = () => {
               className="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs cursor-pointer"
             >
               Done / Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── QR CODE FULL PREVIEW MODAL ───────────────────────── */}
+      {previewQrImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="font-bold text-sm text-slate-900 dark:text-white">{previewQrImage.title}</h3>
+              <button
+                onClick={() => setPreviewQrImage(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-inner flex items-center justify-center">
+              <img
+                src={previewQrImage.url}
+                alt={previewQrImage.title}
+                className="w-64 h-64 object-contain rounded-xl"
+              />
+            </div>
+            <p className="text-xs text-slate-500">Scan this QR code with your mobile banking or wallet app.</p>
+            <button
+              onClick={() => setPreviewQrImage(null)}
+              className="w-full py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition cursor-pointer"
+            >
+              Close Preview
             </button>
           </div>
         </div>

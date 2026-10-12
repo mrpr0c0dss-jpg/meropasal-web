@@ -357,6 +357,8 @@ export interface PaymentQRModel {
   fonepayQrUrl?: string;
   fonepayMerchantCode?: string;
   generalQrUrl?: string;
+  otherQrUrl?: string;
+  otherQrLabel?: string;
 }
 
 export interface PrinterSettingsModel {

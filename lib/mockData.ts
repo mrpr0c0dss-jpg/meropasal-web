@@ -1091,8 +1091,14 @@ export const initialPayrolls: PayrollRecord[] = [
 export const initialPaymentQR: PaymentQRModel = {
   shopId: 'shop_demo_001',
   esewaId: '9841234567',
+  esewaQrUrl: '',
   khaltiId: '9841234567',
+  khaltiQrUrl: '',
   fonepayMerchantCode: 'MP-KTM-9841',
+  fonepayQrUrl: '',
+  generalQrUrl: '',
+  otherQrUrl: '',
+  otherQrLabel: 'Bank QR / Smart QR',
 };
 
 export const initialPrinterSettings: PrinterSettingsModel = {
